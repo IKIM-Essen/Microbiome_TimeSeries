@@ -2,13 +2,24 @@ from numpy import array
 from numpy import hstack
 from keras.models import Sequential
 from keras.layers import LSTM, Dropout, Dense, Conv1D, MaxPooling1D, Embedding
-from keras.losses import MeanSquaredError 
+from keras.losses import MeanSquaredError
 from keras.callbacks import EarlyStopping
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, PowerTransformer, PolynomialFeatures
+from sklearn.preprocessing import (
+    StandardScaler,
+    MinMaxScaler,
+    RobustScaler,
+    PowerTransformer,
+    PolynomialFeatures,
+)
 from sklearn.model_selection import TimeSeriesSplit, cross_val_score, GridSearchCV
 from matplotlib.transforms import Bbox
 from matplotlib.offsetbox import AnchoredText
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, get_scorer_names
+from sklearn.metrics import (
+    mean_squared_error,
+    r2_score,
+    mean_absolute_error,
+    get_scorer_names,
+)
 from matplotlib import pyplot
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 from sklearn.inspection import permutation_importance
@@ -35,8 +46,8 @@ import csv
 
 
 def merge_dataframes(path_base, sample_path):
-    first_df = pd.read_csv(path_base, header = None, index_col=0)
-    data_df = pd.read_csv(sample_path, header = 0, sep = "\t", index_col = "taxonomy")
+    first_df = pd.read_csv(path_base, header=None, index_col=0)
+    data_df = pd.read_csv(sample_path, header=0, sep="\t", index_col="taxonomy")
     data_df_reduced = data_df.groupby(data_df.index).sum()
     for i in data_df_reduced.index:
         if "Unassigned" not in i:
@@ -45,15 +56,16 @@ def merge_dataframes(path_base, sample_path):
             data_df_reduced.drop(index=i, inplace=True)
     data_df_reduced = data_df_reduced.groupby(data_df_reduced.index).sum()
     index_list = data_df_reduced.index.tolist()
-    #print(index_list)
-    result = pd.concat([first_df, data_df_reduced], axis = 1)
-    result.fillna(0, inplace = True)
-    #print(result)
-    #result.to_csv("complete_df.tsv", sep = "\t")
+    # print(index_list)
+    result = pd.concat([first_df, data_df_reduced], axis=1)
+    result.fillna(0, inplace=True)
+    # print(result)
+    # result.to_csv("complete_df.tsv", sep = "\t")
     return index_list, result
 
+
 def read_reduce_dataframe(path):
-    data_df = pd.read_csv(path, header = 0, sep = "\t", index_col = "taxonomy")
+    data_df = pd.read_csv(path, header=0, sep="\t", index_col="taxonomy")
     data_df_reduced = data_df.groupby(data_df.index).sum()
     for i in data_df_reduced.index:
         if "Unassigned" not in i:
@@ -62,56 +74,63 @@ def read_reduce_dataframe(path):
             data_df_reduced.drop(index=i, inplace=True)
     data_df_reduced = data_df_reduced.groupby(data_df_reduced.index).sum()
     index_list = data_df_reduced.index.tolist()
-    #print("reduced")
-    return index_list,data_df_reduced
+    # print("reduced")
+    return index_list, data_df_reduced
 
 
 def read_exogenous(path):
-    exogenous = pd.read_csv(path, header = None, sep = "\t")
-    exogenous.drop(0, axis = 1, inplace = True)
-    #print(exogenous)
+    exogenous = pd.read_csv(path, header=None, sep="\t")
+    exogenous.drop(0, axis=1, inplace=True)
+    # print(exogenous)
     return exogenous
+
 
 def get_timeframe(df):
     timelist = df.columns.values.tolist()
     return timelist
 
-def create_complete_df(path_proband,path_tax,path_exo):
-    #index_list,tax = merge_dataframes(path_tax, path_proband)
-    index_list,tax = read_reduce_dataframe(path_proband)
-    #exo = read_exogenous(path_exo)
+
+def create_complete_df(path_proband, path_tax, path_exo):
+    # index_list,tax = merge_dataframes(path_tax, path_proband)
+    index_list, tax = read_reduce_dataframe(path_proband)
+    # exo = read_exogenous(path_exo)
     time = get_timeframe(tax)
     complete = pd.DataFrame({"Time": time})
     number_taxa = len(tax.values)
     for i in range(len(tax.values)):
         complete[f"Target{i+1}"] = tax.iloc[i].values
-        #print(i)
-    #complete["Exo"] = exo.iloc[0]
-    return complete,number_taxa
+        # print(i)
+    # complete["Exo"] = exo.iloc[0]
+    return complete, number_taxa
 
-#reduced = read_reduce_dataframe("/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/female_bacteroides.txt")
-#print(reduced)
-#exo = read_exogenous("/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/female_shannon.txt")
-#time = get_timeframe(reduced)
-complete, num_taxa = create_complete_df("/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/female_bacteroides.txt","/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/diet/bacteria_list_wDiet.tsv","/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/female_shannon.txt")
 
-#print(complete)
+# reduced = read_reduce_dataframe("/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/female_bacteroides.txt")
+# print(reduced)
+# exo = read_exogenous("/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/female_shannon.txt")
+# time = get_timeframe(reduced)
+complete, num_taxa = create_complete_df(
+    "/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/female_bacteroides.txt",
+    "/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/diet/bacteria_list_wDiet.tsv",
+    "/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/female_shannon.txt",
+)
+
+# print(complete)
 
 for y in range(num_taxa):
     for i in range(1, 4):
-        complete[f'Target{y+1}_Lag_{i}'] = complete[f'Target{y+1}'].shift(-i)
+        complete[f"Target{y+1}_Lag_{i}"] = complete[f"Target{y+1}"].shift(-i)
 
 complete = complete.dropna()
-#print(complete)
-X = complete.drop(['Time'], axis=1)
+# print(complete)
+X = complete.drop(["Time"], axis=1)
 y = pd.DataFrame()
 for i in range(num_taxa):
-    X = X.drop([f"Target{i+1}"], axis = 1)
-    y[f'Target{i+1}'] = complete[[f'Target{i+1}']]
-#print(y)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle = False)
+    X = X.drop([f"Target{i+1}"], axis=1)
+    y[f"Target{i+1}"] = complete[[f"Target{i+1}"]]
+# print(y)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
-model = RandomForestRegressor(n_estimators=20, criterion = "squared_error", max_depth = 3)
+model = RandomForestRegressor(n_estimators=20, criterion="squared_error", max_depth=3)
 model.fit(X_train, y_train)
 
 # Make predictions using the model
@@ -124,7 +143,7 @@ train_predictions = model.predict(X_train)
 mae_train = mean_absolute_error(y_train, train_predictions)
 rmse_train = math.sqrt(mean_squared_error(y_train, train_predictions))
 r2_train = r2_score(y_train, train_predictions)
-nrmse_train = rmse_train/np.std(train_predictions)
+nrmse_train = rmse_train / np.std(train_predictions)
 print(mae_train)
 print(rmse_train)
 print(nrmse_train)
@@ -132,22 +151,22 @@ print(nrmse_train)
 # Evaluate the model
 mae = mean_absolute_error(y_test, predictions)
 rmse = math.sqrt(mean_squared_error(y_test, predictions))
-nrmse = rmse/np.std(predictions)
+nrmse = rmse / np.std(predictions)
 real_list = y_test.values.tolist()
 array = np.array(real_list)
-r2 = r2_score(array,predictions)
-#print(array.shape)
-#print(predictions.shape)
-print(f'Mean Absolute Error: {mae}')
-print(f'Root Mean Sqaured Error: {rmse}')
-print(f'Normalized Root Mean Sqaured Error: {nrmse}')
-#print(f'R2: {r2}')
-#for i in range(len(array)):
+r2 = r2_score(array, predictions)
+# print(array.shape)
+# print(predictions.shape)
+print(f"Mean Absolute Error: {mae}")
+print(f"Root Mean Sqaured Error: {rmse}")
+print(f"Normalized Root Mean Sqaured Error: {nrmse}")
+# print(f'R2: {r2}')
+# for i in range(len(array)):
 #    print(r2_score(array[i],predictions[i]))
 
-#print(r2_train)
-#print(complete.iloc[129])
-#print(complete.iloc[X_test.index]['Time'])
+# print(r2_train)
+# print(complete.iloc[129])
+# print(complete.iloc[X_test.index]['Time'])
 
 """
 male_complete, num_taxa_male = create_complete_df("/local/work/16S/snakemake_qiime/16S/MachineLearning/HostMicrobiome/allGutMale/table.from_biom_w_taxonomy-featcount_mgut_smaller.txt","/local/work/16S/snakemake_qiime/16S/MachineLearning/HostMicrobiome/bacteria_list_final4.tsv","/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/female_shannon.txt")
@@ -201,8 +220,8 @@ print(f'Updated Mean Absolute Error: {updated_mae}')
 
 
 # Visualize predictions
-#print(predictions.shape)
-#for i in range(num_taxa):
+# print(predictions.shape)
+# for i in range(num_taxa):
 #    plt.plot(complete['Time'], complete[f'Target{i+1}'], label='True Values')
 #    plt.plot(complete.iloc[X_test.index-5]["Time"], predictions[:, i], label='Predictions')
 #    plt.title('Time Series Prediction with Exogenous Variable')
@@ -213,16 +232,15 @@ print(f'Updated Mean Absolute Error: {updated_mae}')
 #    plt.savefig(f"/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/plot{i+1}_RF_woEx.png")
 #    plt.cla()
 
-#plt.plot(complete['Time'], complete['Target2'], label='True Values')
-#plt.plot(complete.iloc[X_test.index-5]["Time"], predictions[:, 1], label='Predictions')
-#plt.title('Time Series Prediction with Exogenous Variable')
-#plt.xlabel('Time')
-#plt.ylabel('Target2')
-#plt.legend()
-#plt.show()
-#plt.savefig("/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/plot2_RF.png")
-#plt.cla()
-
+# plt.plot(complete['Time'], complete['Target2'], label='True Values')
+# plt.plot(complete.iloc[X_test.index-5]["Time"], predictions[:, 1], label='Predictions')
+# plt.title('Time Series Prediction with Exogenous Variable')
+# plt.xlabel('Time')
+# plt.ylabel('Target2')
+# plt.legend()
+# plt.show()
+# plt.savefig("/local/work/16S/snakemake_qiime/16S/MachineLearning/1_modelUpdate/plot2_RF.png")
+# plt.cla()
 
 
 """
