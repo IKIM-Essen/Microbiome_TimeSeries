@@ -20,7 +20,7 @@ plotpath = "../allGutFemale/"
 def shap_featureimportance_plots(model, Xtrain, Xtest, species):
     shap.explainers._deep.deep_tf.op_handlers[
         "AddV2"
-        ] = shap.explainers._deep.deep_tf.passthrough
+    ] = shap.explainers._deep.deep_tf.passthrough
     DE = shap.DeepExplainer(model, Xtrain)  # X_train is 3d numpy.ndarray
     shap_values = DE.shap_values(
         Xtrain, check_additivity=False
@@ -54,7 +54,7 @@ def shap_featureimportance_plots(model, Xtrain, Xtest, species):
     plt.clf()
     shap.explainers._deep.deep_tf.op_handlers[
         "AddV2"
-        ] = shap.explainers._deep.deep_tf.passthrough
+    ] = shap.explainers._deep.deep_tf.passthrough
     Xflatten = model.predict(Xtrain).reshape(-1, len(species))
     # Xtestflatten = model.predict(Xtest).reshape(-1,38)
     Xtestflatten = Xtest.reshape(-1, len(species))
