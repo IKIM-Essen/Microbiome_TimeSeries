@@ -15,11 +15,11 @@ Model feature importance analysis has been done with SHAP.
 
 The data used as input is 16S rRNA gene abundance data in form of a tsv file created from a BIOM file. The environmental model can process metadata as
 well provided in a separate file.
-Models have been trained and tested on published time series data from the following references:
+Models have been trained and tested on published time series data from the following references: \
 Caporaso et al., Genome Biology, 2011 \
 David et al., Genome Biology, 2014 \
 Kodera et al., Environ Microbiome, 2023 \
-LaMartina et al., Microbiome, 2021 \
+LaMartina et al., Microbiome, 2021
 
 ## Installation
 
