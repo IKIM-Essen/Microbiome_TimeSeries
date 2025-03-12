@@ -37,3 +37,7 @@ statsmodel: 0.14.0
 When all necessary packages are installed and the conda environment is activated, the code can be run. Please be careful, as this is a work in progress,
 there are still some hardcoded paths. Please change them to a path existing on your machine. This will be changed in the future, please bear with me. The
 code has been built and tested on a Linux machine.
+
+## Author
+
+* Ann-Kathrin Dörr (@AKBrueggemann)
