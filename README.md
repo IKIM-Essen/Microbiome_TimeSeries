@@ -19,7 +19,7 @@ Models have been trained and tested on published time series data from the follo
 Caporaso et al., Genome Biology, 2011 \
 David et al., Genome Biology, 2014 \
 Kodera et al., Environ Microbiome, 2023 \
-LaMartina et al., Microbiome, 2021 
+LaMartina et al., Microbiome, 2021
 
 ## Installation
 
