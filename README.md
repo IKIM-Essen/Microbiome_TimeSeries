@@ -20,4 +20,15 @@ LaMartina et al., Microbiome, 2021
 
 ## Installation
 
+To run the code a conda environment was used. The following packages and dependencies are necessary to run the code:
+Pandas: 1.5.0
+Tensorflow: 2.7.0
+Scikit-Learn: 1.1.2
+matplotlib: 3.4.3
+SHAP: 0.41.0
+keras: 2.7.0
+statsmodel: 0.14.0
+
 ## Usage and Instructions
+
+When all necessary packages are installed and the conda environment is activated, the code can be run. Please be careful, as this is a work in progress, there are still some hardcoded paths. Please change them to a path existing on your machine. This will be changed in the future, please bear with me. The code has been built and tested on a Linux machine.
