@@ -20,10 +20,10 @@ from mapie.subsample import BlockBootstrap
 from mapie.regression import MapieTimeSeriesRegressor
 
 import keras
-import ensemble
+import old.environmental.ensemble as ensemble
 import shap
-import shap_plots
-import errorInterval
+import old.environmental.shap_plots as shap_plots
+import old.environmental.errorInterval as errorInterval
 
 def func(evt):
     if legend.contains(evt):

@@ -1,0 +1,27 @@
+season_map:
+  winter: 0
+  spring: 1
+  summer: 2
+  autumn: 3
+
+month_map:
+  january: 1
+  february: 2
+  march: 3
+  april: 4
+  may: 5
+  june: 6
+  july: 7
+  august: 8
+  september: 9
+  october: 10
+  november: 11
+  december: 12
+
+columns_to_drop:
+  - character
+  - sub_character
+  - run_date
+  - season
+  - month
+  - unique

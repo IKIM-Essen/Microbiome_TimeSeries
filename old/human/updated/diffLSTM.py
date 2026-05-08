@@ -8,12 +8,12 @@ from sklearn.metrics import (
     get_scorer_names,
 )
 from keras.models import Sequential
-from keras.layers import LSTM, Dropout, Dense, Conv1D, MaxPooling1D, Embedding, GRU
+from keras.layers import LSTM, Dropout, Dense, Conv1D, MaxPooling1D, Embedding
 import matplotlib.pyplot as plt
 from keras.callbacks import EarlyStopping
 import math
-import ensemble
-import errorInterval
+import old.human.updated.ensemble as ensemble
+import old.human.updated.errorInterval as errorInterval
 
 
 def merge_dataframes(path_base, sample_path):
@@ -122,30 +122,20 @@ y_train, y_val, y_test = y[0:train_size], y[train_size:val_size], y[val_size:]
 # print(X_train.shape)
 # print(y_train.shape)
 print("Creating model")
+# Build LSTM model with an exogenous variable for two targets
 model = Sequential()
 model.add(
-    GRU(units=4, activation="relu", input_shape=(X_train.shape[1], X_train.shape[2]))
-)
-model.add(Dense(num_taxa, name="target"))
-
-model.compile(optimizer="adam", loss="mse")
-model.summary()
+    LSTM(2048, activation="relu", input_shape=(X_train.shape[1], X_train.shape[2]))
+)  # , return_sequences = True
+model.add(Dropout(0.2))
+model.add(Dense(num_taxa, name="target"))  # Output layer for Target_1
+# model.add(Dense(1, name='target_2'))  # Output layer for Target_2
+model.compile(loss="mean_absolute_error", optimizer="adam")
 
 # Train the model
-es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=20)
-history = model.fit(
-    X_train,
-    y_train,
-    validation_data=(X_val, y_val),
-    epochs=400,
-    batch_size=5,
-    verbose=0,
-    callbacks=[es],
-)
+es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=10)
+model.fit(X_train, y_train, epochs=400, batch_size=10, verbose=2, callbacks=[es])
 # model.save("1LayerLSTM.h5")
-# print(X_test)
-# Make predictions on the test set
-# model.save("1LayerGRU.h5")
 # Make predictions on the test set
 predictions = model.predict(X_test)
 predictions_train = model.predict(X_train)
@@ -211,6 +201,7 @@ y_train = scaler.inverse_transform(
 )[:, 0:num_taxa]
 
 
+print(predictions_reshaped)
 # print(predictions_reshaped.shape)
 # print(y_test.shape)
 
@@ -272,34 +263,10 @@ for i in range(num_taxa):
     plt.ylabel(f"Target{i+1}")
     plt.legend()
     plt.show()
-    plt.savefig(f"small/GRU/plot{i+1}_female.png")
+    plt.savefig(f"small/plot{i+1}_female.png")
     plt.cla()
-
 
 """
-print("Plotting results")
-#print(prediction_inter[1])
-#print(complete['Target1'])
-for i in range(num_taxa):
-    # Visualize predictions for Targets
-    plt.plot(complete['Time'], complete[f'Target{i+1}'], label='True Values')
-    # plt.plot(complete.iloc[val_size:]['Time'], predictions_reshaped[:, i], label='Predictions test')
-    plt.plot(complete.iloc[:train_size]['Time'], train_pred_reshaped[:, i], label='Training')
-    plt.plot(complete.iloc[train_size:val_size]['Time'], val_pred_reshaped[:,i], label = 'Validation')
-    plt.plot(complete.iloc[val_size:]['Time'],prediction_inter[i][0][1:len(prediction_inter[i][0])], label = "upper")
-    plt.plot(complete.iloc[val_size:]['Time'],prediction_inter[i][1][1:len(prediction_inter[i][1])], label = "lower")
-    plt.plot(complete.iloc[val_size:]['Time'],prediction_inter[i][2][1:len(prediction_inter[i][2])], label = "mean")
-    plt.fill_between(complete.iloc[val_size:]['Time'],prediction_inter[i][0][1:len(prediction_inter[i][0])], prediction_inter[i][1][1:len(prediction_inter[i][1])], alpha=0.2)
-    # plt.plot(complete['Time'], complete['temp'], label='Predictions train')
-    plt.title('Multivariate Time Series '+dic_taxa[f"Target{i+1}"], fontsize = 6)
-    plt.xlabel('Time')
-    plt.ylabel(f'Target{i+1}')
-    plt.legend()
-    plt.show()
-    plt.savefig(f"diet/GRU/plot{i+1}_female.png")
-    plt.cla()
-
-
 def retrain_model(timeseries, taxalist, exo, model, scaler):
     print("Read new model data")
     new_timeseries, num_taxa, new_taxa = create_complete_df(timeseries, taxalist, exo)
@@ -329,7 +296,7 @@ def retrain_model(timeseries, taxalist, exo, model, scaler):
     print(history.history.keys())
     ml_plots.plot_loss(history)
 
-    model.save(plotpath+"1LayerGRU_retrained.h5")
+    model.save(plotpath+"1LayerLSTM_retrained.h5")
     print("Create ensemble")
     ensemble = model_confidence.retrain_confidence_model("/local/work/16S/snakemake_qiime/16S/MachineLearning/HostMicrobiome/multitraining/DonorB/ensemblemodels", trainX, trainY, valX, valY, plotpath)
     print("Create Interval")
@@ -376,21 +343,21 @@ def retrain_model(timeseries, taxalist, exo, model, scaler):
     y_train = scaler.inverse_transform(np.concatenate([y_train, X_train.reshape(X_train.shape[0],X_train.shape[2])], axis=1))[:, 0:num_taxa]
     print("Print results")
     for i in range(num_taxa):
-        # Visualize predictions for Targets
-        plt.plot(complete['Time'], complete[f'Target{i+1}'], label='True Values')
-        # plt.plot(complete.iloc[val_size:]['Time'], predictions_reshaped[:, i], label='Predictions test')
-        plt.plot(complete.iloc[:train_size]['Time'], train_pred_reshaped[:, i], label='Training')
-        plt.plot(complete.iloc[train_size:val_size]['Time'], val_pred_reshaped[:,i], label = 'Validation')
-        plt.plot(complete.iloc[val_size:]['Time'],prediction_inter[i][0][1:len(prediction_inter[i][0])], label = "upper")
-        plt.plot(complete.iloc[val_size:]['Time'],prediction_inter[i][1][1:len(prediction_inter[i][1])], label = "lower")
-        plt.plot(complete.iloc[val_size:]['Time'],prediction_inter[i][2][1:len(prediction_inter[i][2])], label = "mean")
-        plt.fill_between(complete.iloc[val_size:]['Time'],prediction_inter[i][0][1:len(prediction_inter[i][0])], prediction_inter[i][1][1:len(prediction_inter[i][1])], alpha=0.2)
-        # plt.plot(complete['Time'], complete['temp'], label='Predictions train')
-        plt.title('Multivariate Time Series '+dic_taxa[f"Target{i+1}"], fontsize = 6)
-        plt.xlabel('Time')
-        plt.ylabel(f'Target{i+1}')
-        plt.legend()
-        plt.show()
-        plt.savefig(f"diet/GRU/plot{i+1}_retrained.png")
-        plt.cla()
+    # Visualize predictions for Targets
+    plt.plot(complete['Time'], complete[f'Target{i+1}'], label='True Values')
+    # plt.plot(complete.iloc[val_size:]['Time'], predictions_reshaped[:, i], label='Predictions test')
+    plt.plot(complete.iloc[:train_size]['Time'], train_pred_reshaped[:, i], label='Training')
+    plt.plot(complete.iloc[train_size:val_size]['Time'], val_pred_reshaped[:,i], label = 'Validation')
+    plt.plot(complete.iloc[val_size:]['Time'],prediction_inter[i][0][1:len(prediction_inter[i][0])], label = "upper")
+    plt.plot(complete.iloc[val_size:]['Time'],prediction_inter[i][1][1:len(prediction_inter[i][1])], label = "lower")
+    plt.plot(complete.iloc[val_size:]['Time'],prediction_inter[i][2][1:len(prediction_inter[i][2])], label = "mean")
+    plt.fill_between(complete.iloc[val_size:]['Time'],prediction_inter[i][0][1:len(prediction_inter[i][0])], prediction_inter[i][1][1:len(prediction_inter[i][1])], alpha=0.2)
+    # plt.plot(complete['Time'], complete['temp'], label='Predictions train')
+    plt.title('Multivariate Time Series '+dic_taxa[f"Target{i+1}"], fontsize = 6)
+    plt.xlabel('Time')
+    plt.ylabel(f'Target{i+1}')
+    plt.legend()
+    plt.show()
+    plt.savefig(f"small/LSTM/plot{i+1}_retrained.png")
+    plt.cla()
 """

@@ -15,9 +15,9 @@ from mapie.metrics import (regression_coverage_score,
 from mapie.subsample import BlockBootstrap
 from mapie.regression import MapieTimeSeriesRegressor
 
-import ensemble
+import old.environmental.ensemble as ensemble
 import shap
-import shap_plots
+import old.environmental.shap_plots as shap_plots
 
 strategy = tf.distribute.MirroredStrategy()
 
