@@ -3,6 +3,44 @@
 This repository contains scripts for creating and analyzing machine learning models for the prediction of microbial time series data. The goal is
 to predict changes in microbial communities and forecast trends.
 
+# Testing phase
+
+This is the testing ground for the updated model and workflow architecture. If you are testing this, please follow these instructions:
+
+First you have to clone this repository to your machine. The code has been currently only tested on a linux system, so this would definitely be recommended at this point.
+You can either clone the repo with:
+
+    git clone https://github.com/IKIM-Essen/Microbiome_TimeSeries.git
+
+Or you can directly download the repo as zip file form GitHub and then unpack it.
+
+Eitherway, when you installed the code, please change into the main project directory "Microbiome_TimeSeries".
+
+Then create a conda environment from the yaml file environment.yaml with:
+
+    conda create --file environment.yml -n YOUR_ENV_NAME
+
+After that, activate it with:
+
+    conda activate YOUR_ENV_NAME
+
+Before you can test the whole thing, you need provide some data. There are currently three files that need to be provided. The main file is the timeseries.tsv. This holds the bacterial time series data from your analysis in the following format:
+
+| taxonomy                  | timepoint1      | timepoint2      | timepoint3      |
+|---------------------------|-----------------------------------------------------|
+| genus name in Silva format| abundance1      | abundance2      | abundance3      |
+
+Then there is the metadata.tsv which has the same format but holds all kinds of metadata or additional information to the data.
+
+The third file is the taxa.tsv file. Here all the bacterial taxa on genus level should be listed. This is important, if you want to train and retrain the model on datasets potentially holding different bacteria, as the model needs to be trained on a fixed set of bacteria, even if they are only present in one dataset you want to analyze and not all of them.
+
+To run the preprocessing of the data which creates a table that will be used as input please use the following command:
+
+    python scripts/preprocessing.py --timeseries path/to/file --metadata /path/to/file --taxa path/to/file --include_metadata True --output path/to/output
+
+If you do not set any of these flags, the code will use the default settings. The output should be a table located in results/tables/ .
+
+
 ## Features and Capabilities
 
 The repository contains scripts for the creation, training and testing of different model architectures. Included are VARMA, Random Forest, LSTM and GRU
