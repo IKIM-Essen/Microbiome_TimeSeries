@@ -6,6 +6,8 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from joblib import dump, load
 
+from src.utils.config import extract_species
+
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 LOG_DIR = os.path.join(ROOT_DIR, "logs", "preprocessing")
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -16,12 +18,6 @@ if not logger.handlers:
     file_handler = logging.FileHandler(os.path.join(LOG_DIR, "scaling.log"))
     file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
     logger.addHandler(file_handler)
-
-
-def extract_species(taxa):
-    species = list(taxa.values())
-    logger.info("Extracted %s species from taxa mapping", len(species))
-    return species
 
 
 def scale_date(complete, scaler_path="results/models/scaler.pkl"):

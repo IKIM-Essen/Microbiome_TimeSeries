@@ -1,6 +1,6 @@
 import argparse
-
 import os
+import pickle
 import sys
 
 # Add the parent directory to sys.path to enable importing from src
@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--taxa", type=str, default = "data/taxa.tsv", help="Path to the taxa data file (CSV format).")
     parser.add_argument("--include_metadata", type = bool, default=False, help="Whether to include metadata in the output dataframe. Default is False.")
     parser.add_argument("--output", type=str, default="results/tables/complete_df.csv", help="Path to the output file (CSV format). If not provided, the output will be saved as 'results/tables/complete_df.csv'.")
+    parser.add_argument("--mapping-output", type=str, default="results/intermediate/dic_TargTax.pkl", help="Path to save the target taxa mapping pickle file.")
     parser.add_argument("--split-data", action="store_true", help="Also scale and split the complete dataset after creation.")
 
     args = parser.parse_args()
@@ -35,6 +36,11 @@ def main():
         args.include_metadata,
         args.output
     )
+
+    os.makedirs(os.path.dirname(args.mapping_output), exist_ok=True)
+    with open(args.mapping_output, "wb") as mapping_file:
+        pickle.dump(dic_TargTax, mapping_file)
+    print(f"Saved target taxa mapping to {args.mapping_output}")
 
     if args.split_data:
         X_train, y_train, X_val, y_val, X_test, y_test = split_data(

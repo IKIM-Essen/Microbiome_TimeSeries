@@ -7,3 +7,7 @@ def load_config(path):
         config = yaml.safe_load(file)
 
     return config
+
+def extract_species(taxa):
+    species = list(taxa.values())
+    return species
