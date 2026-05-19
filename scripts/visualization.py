@@ -17,7 +17,7 @@ def main():
     )
 
     parser.add_argument("--dataframe", type=str, default="results/tables/complete_df.csv", help="Path to the complete dataframe CSV file.")
-    parser.add_argument("--output", type=str, default="results/figures/original_timeseries.png", help="Path to save the output plot (PNG format).")
+    parser.add_argument("--output", type=str, default="results/figures/original_timeseries.html", help="Path to save the output plot (PNG format).")
     parser.add_argument("--bacteria", type=str, default="results/intermediate/dic_TargTax.pkl", help="Path to the bacteria mapping pickle file.")
 
     args = parser.parse_args()
