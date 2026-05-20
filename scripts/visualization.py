@@ -13,7 +13,7 @@ from src.visualization.plot_original_timeseries import time_series_analysis_plot
 def main():
     parser = argparse.ArgumentParser(
         description="Plot original time series data for specified bacteria.",
-        epilog="Example usage: python visualization.py --dataframe PATH/TO/COMPLETE_DF.csv --output PATH/TO/OUTPUT.png --bacteria PATH/TO/BACTERIA_MAPPING.pkl"
+        epilog="Example usage: python scripts/visualization.py --dataframe PATH/TO/COMPLETE_DF.csv --output PATH/TO/OUTPUT.png --bacteria PATH/TO/BACTERIA_MAPPING.pkl"
     )
 
     parser.add_argument("--dataframe", type=str, default="results/tables/complete_df.csv", help="Path to the complete dataframe CSV file.")
