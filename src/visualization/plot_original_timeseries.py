@@ -1,8 +1,22 @@
+import logging
+import os
 import pickle
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+LOG_DIR = os.path.join(ROOT_DIR, "logs", "visualization")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    file_handler = logging.FileHandler(os.path.join(LOG_DIR, "plot_original_timeseries.log"))
+    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    logger.addHandler(file_handler)
+
 
 def _load_bacteria_mapping(bacteria):
     """Resolve the bacteria mapping into column names and plot labels.
@@ -48,9 +62,13 @@ def time_series_analysis_plot(dataframe_complete_path, filename, bacteria):
         If a dict, keys are dataframe columns and values are legend labels.
         If a list, it should contain dataframe column names.
     """
+    logger.info("Starting time series analysis plot: dataframe=%s, output=%s", dataframe_complete_path, filename)
+
     # Load the complete data frame from disk and resolve the bacteria mapping.
     dataframe_complete = pd.read_csv(dataframe_complete_path, parse_dates=["Time"])
+    logger.info("Loaded complete dataframe with shape %s", dataframe_complete.shape)
     plot_columns, plot_labels = _load_bacteria_mapping(bacteria)
+    logger.info("Resolved bacteria mapping for %s columns", len(plot_columns))
 
     # Create a deterministic color palette for Plotly traces.
     np.random.seed(100)
@@ -84,6 +102,7 @@ def time_series_analysis_plot(dataframe_complete_path, filename, bacteria):
                 )
             )
         else:
+            logger.error("Column '%s' not found in dataframe_complete columns %s", column, list(dataframe_complete.columns))
             raise KeyError(f"Column '{column}' not found in dataframe_complete")
 
     # Configure the interactive layout and legend.
@@ -107,5 +126,7 @@ def time_series_analysis_plot(dataframe_complete_path, filename, bacteria):
     )
 
     # Save the interactive plot to an HTML file.
+    logger.info("Writing interactive plot to %s", filename)
     pio.write_html(fig, filename, auto_open=False)
+    logger.info("Finished writing interactive plot")
     return fig
