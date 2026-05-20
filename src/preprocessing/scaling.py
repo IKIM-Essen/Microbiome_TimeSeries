@@ -42,6 +42,13 @@ def scale_data_with_scaler(complete, scaler_path="results/models/scaler.pkl", sc
     logger.info("Scaled data using existing scaler, saved updated scaler to %s", scaler_update)
     return scaled_data, scaler
 
+def inverse_scale_data(scaled_data, scaler_path="results/models/scaler.pkl"):
+    logger.info("Inversely scaling data with scaler %s", scaler_path)
+    scaler = load(open(str(scaler_path), 'rb'))
+    original_data = scaler.inverse_transform(scaled_data)
+    logger.info("Inversely scaled data shape %s", original_data.shape)
+    return original_data
+
 def split_data(complete, num_taxa):
     logger.info("Splitting data for %s taxa", num_taxa)
     scaled_data, scaler = scale_date(complete)
