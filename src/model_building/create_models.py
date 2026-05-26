@@ -1,3 +1,6 @@
+import logging
+import os
+
 from keras.models import Sequential
 from keras.layers import LSTM, Dropout, Dense, Conv1D, MaxPooling1D, Embedding
 import matplotlib.pyplot as plt
@@ -5,6 +8,18 @@ from keras.callbacks import EarlyStopping
 import keras
 import tensorflow as tf
 from tensorflow.keras import layers, models
+
+# Setup logging
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+LOG_DIR = os.path.join(ROOT_DIR, "logs", "training")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    file_handler = logging.FileHandler(os.path.join(LOG_DIR, "model_building.log"))
+    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    logger.addHandler(file_handler)
 
 # --- Build TCN model ---
 def build_tcn(input_shape, output_dim, horizon=1):
@@ -35,32 +50,50 @@ def ensemble_predict(tcn,lstm,X):
     return y_tcn + y_lstm_residual
 
 def fit_model(X_train, y_train, X_val, y_val, n_features, tcn_path, lstm_path):
+    try:
+        logger.info("Starting model fitting with X_train shape %s, y_train shape %s", X_train.shape, y_train.shape)
+        
+        # Example setup
+        time_steps = 1                        # input window length
+        num_features = X_train.shape[2]       # number of input features
+        num_targets = y_train.shape[1]        # number of target variables
+        horizon = 1                           # forecast 7 steps ahead
+        logger.info("Model configuration: time_steps=%s, num_features=%s, num_targets=%s, horizon=%s",
+                    time_steps, num_features, num_targets, horizon)
 
-    # Example setup
-    time_steps = 1                        # input window length
-    num_features = X_train.shape[2]       # number of input features
-    num_targets = X_train.shape[2]        # number of target variables
-    horizon = 1                           # forecast 7 steps ahead
+        tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
+        tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+        lstm_model = build_lstm((time_steps, num_features), num_targets, horizon)
+        lstm_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+        logger.info("Models built and compiled successfully")
 
-    tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
-    tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
-    lstm_model = build_lstm((time_steps, num_features), num_targets, horizon)
-    lstm_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+        # --- Train TCN first ---
+        logger.info("Starting TCN model training")
+        tcn_model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data = (X_val,y_val))
+        logger.info("TCN model training completed")
+        
+        # --- Compute residuals ---
+        logger.info("Computing residuals for LSTM training")
+        y_tcn_pred = tcn_model.predict(X_train)
+        residuals = y_train - y_tcn_pred
 
-    # --- Train TCN first ---
-    tcn_model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data = (X_val,y_val))
-    # --- Compute residuals ---
-    y_tcn_pred = tcn_model.predict(X_train)
-    residuals = y_train - y_tcn_pred
+        y_pred_tcn_val = tcn_model.predict(X_val)
+        residuals_val = y_val - y_pred_tcn_val
+        logger.info("Residuals computed successfully")
 
-    y_pred_tcn_val = tcn_model.predict(X_val)
-    residuals_val = y_val - y_pred_tcn_val
+        # --- Train LSTM on residuals ---
+        logger.info("Starting LSTM model training on residuals")
+        es = EarlyStopping(monitor='loss', mode='min', verbose=1, patience=10)
+        lstm_model.fit(X_train, residuals, epochs=100, batch_size=32, validation_data = (X_val, residuals_val), callbacks = [es])
+        logger.info("LSTM model training completed")
 
-    # --- Train LSTM on residuals ---
-    es = EarlyStopping(monitor='loss', mode='min', verbose=1, patience=10)
-    lstm_model.fit(X_train, residuals, epochs=100, batch_size=32, validation_data = (X_val, residuals_val), callbacks = [es])
+        logger.info("Saving TCN model to %s", tcn_path)
+        tcn_model.save(tcn_path)
+        logger.info("Saving LSTM model to %s", lstm_path)
+        lstm_model.save(lstm_path)
+        logger.info("Model fitting completed successfully")
 
-    tcn_model.save(tcn_path)
-    lstm_model.save(lstm_path)
-
-    return tcn_model,lstm_model
+        return tcn_model,lstm_model
+    except Exception as e:
+        logger.error("Error during model fitting: %s", str(e), exc_info=True)
+        raise
