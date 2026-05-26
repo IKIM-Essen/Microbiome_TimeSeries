@@ -5,14 +5,14 @@ import sys
 
 import numpy as np
 
-# Add the parent directory to sys.path to enable importing from src
+# Add the parent directory to sys.path so imports from src work correctly
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 print(os.getcwd())
 
 from src.model_building.create_models import fit_model
 
-# Setup logging
+# Setup logging for this script
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 LOG_DIR = os.path.join(ROOT_DIR, "..", "logs", "training")
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -38,6 +38,7 @@ def main():
         args = parser.parse_args()
         logger.info("Starting model training with splits from %s", args.splits_input)
 
+        # Load preprocessed training and validation splits from the saved npz file
         splits = np.load(args.splits_input)
         X_train = splits["X_train"]
         y_train = splits["y_train"]
@@ -50,6 +51,7 @@ def main():
         logger.info("Loaded split batches from %s", args.splits_input)
         logger.info("X_train=%s, y_train=%s, X_val=%s, y_val=%s", X_train.shape, y_train.shape, X_val.shape, y_val.shape)
 
+        # Train the TCN model and then fit the residual LSTM on TCN errors
         fit_model(
             X_train,
             y_train,

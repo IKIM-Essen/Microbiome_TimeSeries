@@ -9,7 +9,7 @@ import keras
 import tensorflow as tf
 from tensorflow.keras import layers, models
 
-# Setup logging
+# Setup logging for model-building and training operations
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 LOG_DIR = os.path.join(ROOT_DIR, "logs", "training")
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -22,6 +22,7 @@ if not logger.handlers:
     logger.addHandler(file_handler)
 
 # --- Build TCN model ---
+# This model uses causal 1D convolution to predict the next step for each target.
 def build_tcn(input_shape, output_dim, horizon=1):
     inp = layers.Input(shape=input_shape)
     x = inp
@@ -37,6 +38,7 @@ def build_tcn(input_shape, output_dim, horizon=1):
     out = layers.Reshape((horizon, output_dim))(out)
     return models.Model(inputs=inp, outputs=out)
 
+# Build a standard regression LSTM model for the same output shape
 def build_lstm(input_shape, output_dim, horizon=1):
     inp = layers.Input(shape=input_shape)
     x = layers.LSTM(1024, return_sequences=False)(inp)
@@ -49,6 +51,7 @@ def ensemble_predict(tcn,lstm,X):
     y_lstm_residual = lstm.predict(X)
     return y_tcn + y_lstm_residual
 
+# Fit the TCN model first, then train the LSTM on the TCN residuals.
 def fit_model(X_train, y_train, X_val, y_val, n_features, tcn_path, lstm_path):
     try:
         logger.info("Starting model fitting with X_train shape %s, y_train shape %s", X_train.shape, y_train.shape)
@@ -57,11 +60,12 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, tcn_path, lstm_path):
         time_steps = 1                        # input window length
         num_features = X_train.shape[2]       # number of input features
         num_targets = y_train.shape[1]        # number of target variables
-        horizon = 1                           # forecast 7 steps ahead
+        horizon = 1                           # prediction horizon
         logger.info("Model configuration: time_steps=%s, num_features=%s, num_targets=%s, horizon=%s",
                     time_steps, num_features, num_targets, horizon)
 
-        tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
+        # Build models and compile them for regression
+tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
         tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
         lstm_model = build_lstm((time_steps, num_features), num_targets, horizon)
         lstm_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
@@ -73,6 +77,7 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, tcn_path, lstm_path):
         logger.info("TCN model training completed")
         
         # --- Compute residuals ---
+        # Residuals are the difference between the true target and the TCN prediction.
         logger.info("Computing residuals for LSTM training")
         y_tcn_pred = tcn_model.predict(X_train)
         residuals = y_train - y_tcn_pred
