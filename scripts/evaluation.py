@@ -10,11 +10,9 @@ import pandas as pd
 # Add the parent directory to sys.path to enable importing from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-print(os.getcwd())
+from src.evaluation.evaluation_metrics import combine_metrics
 
-from src.evaluation.ensemble import predict_interval
-from src.utils.config import extract_species
-#from src.evaluation.outlier import find_interval_violations
+print(os.getcwd())
 
 def main():
     # Configure logging
@@ -25,61 +23,34 @@ def main():
     logger = logging.getLogger(__name__)
 
     parser = argparse.ArgumentParser(
-        description="Create an output for the prediction interval and it's potential violations.",
-        epilog="Example usage: python "
+        description="Create an output for the evaluation metrics.",
+        epilog="Example usage: python scripts/evaluation.py"
     )
-
-    parser.add_argument("--num-models", type=int, default = 5, help="Number of models to train and include in the ensemble.")
-    parser.add_argument("--splits-input", type=str, default="results/intermediate/splits.npz", help="Path to the saved split numpy batches.")
-    parser.add_argument("--scaler", type = str, default="results/models/scaler.pkl", help="Path to the saved scaler pickle file.")
-    parser.add_argument("--tcn-path", type=str, default="results/models/tcn_model.h5", help="Path to the saved TCN model file.")
-    parser.add_argument("--lstm-path", type=str, default="results/models/lstm_model.h5", help="Path to the saved LSTM model file.")
-    parser.add_argument("--output", type = str, default="results/tables/prediction_interval.pkl", help="Path to the saved prediction interval file.")
-
+    parser.add_argument("--prediction-results", type=str, default="results/intermediate/predictions.npz", help="Path to the saved split numpy batches of predictions.")
+    parser.add_argument("--splits", type=str, default="results/intermediate/splits.npz", help="Path to the saved split numpy batches of original values.")
+    parser.add_argument("--output", type = str, default="results/tables/evaluation_metrics.tsv", help="Path to the saved evaluation metrics.")
     
-
     args = parser.parse_args()
     logger.info("Starting evaluation with arguments: %s", args)
 
-    logger.info("Loading splits from %s", args.splits_input)
-    splits = np.load(args.splits_input)
-    X_train = splits["X_train"]
-    y_train = splits["y_train"]
-    X_val = splits["X_val"]
-    y_val = splits["y_val"]
-    X_test = splits["X_test"]
-    y_test = splits["y_test"]
-    logger.info("Successfully loaded splits. X_train shape: %s, y_train shape: %s", X_train.shape, y_train.shape)
+    logger.info("Loading prediction results from %s", args.prediction_results)
+    predictions = np.load(args.prediction_results)
+    y_pred_train = predictions["pred_train"]
+    y_pred_val = predictions["pred_val"]
+    y_pred_test = predictions["pred_test"]
 
-    df = pd.read_csv("data/taxa.tsv", header = None, index_col = None)
-    
-    species = extract_species(df)
+    actual = np.load(args.splits)
+    y_train = actual["y_train"]
+    y_val = actual["y_val"]
+    y_test = actual["y_test"]
 
-    logger.info("Computing prediction interval with %s models", args.num_models)
-    prediction_interval = predict_interval(
-        args.num_models,
-        X_train,
+    evaluation_metrics = combine_metrics(
         y_train,
-        X_val,
-        y_val,
-        X_test,
         y_test,
-        args.scaler,
-        species,
-        args.tcn_path,
-        args.lstm_path
+        y_pred_train,
+        y_pred_test,
+        args.output
     )
-    
-    # Ensure output directory exists
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    
-    # Save prediction interval to output file
-    logger.info("Saving prediction interval to %s", args.output)
-    with open(args.output, 'wb') as f:
-        pickle.dump(prediction_interval, f)
-    logger.info("Prediction interval successfully saved")
-
-
 
 if __name__ == "__main__":
     main()
