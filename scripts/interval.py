@@ -34,10 +34,9 @@ def main():
     parser.add_argument("--scaler", type = str, default="results/models/scaler.pkl", help="Path to the saved scaler pickle file.")
     parser.add_argument("--tcn-path", type=str, default="results/models/tcn_model.h5", help="Path to the saved TCN model file.")
     parser.add_argument("--lstm-path", type=str, default="results/models/lstm_model.h5", help="Path to the saved LSTM model file.")
-    parser.add_argument("--output", type = str, default="results/tables/prediction_interval.pkl", help="Path to the saved prediction interval file.")
+    parser.add_argument("--output", type = str, default="results/models/prediction_interval.pkl", help="Path to the saved prediction interval file.")
 
     
-
     args = parser.parse_args()
     logger.info("Starting evaluation with arguments: %s", args)
 
@@ -67,7 +66,8 @@ def main():
         args.scaler,
         species,
         args.tcn_path,
-        args.lstm_path
+        args.lstm_path,
+        args.output
     )
     
     # Ensure output directory exists

@@ -74,7 +74,7 @@ def nrmse(actual, predicted):
     logger.info("NRMSE computed: %f | rmse=%f | std=%f", nrmse_val, rmse_val, std)
     return nrmse_val
 
-def combine_metrics(y_train, y_test, predict_train, predict_test, output_path=None):
+def combine_metrics(y_train, y_test, predict_train, predict_test, output_path):
     """Compute common metrics for train and test sets and optionally save to TSV.
 
     Parameters

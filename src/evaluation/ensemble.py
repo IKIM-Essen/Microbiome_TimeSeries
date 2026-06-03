@@ -17,7 +17,6 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, sc
 
         # Make predictions on the test set
         predictions_val = ensemble_predict(tcn_model, lstm_model, Xval)
-        print(Xtrain.shape)
 
         y_val_tcn = reshape(predictions_val)
 
