@@ -65,7 +65,7 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, tcn_path, lstm_path):
                     time_steps, num_features, num_targets, horizon)
 
         # Build models and compile them for regression
-tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
+        tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
         tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
         lstm_model = build_lstm((time_steps, num_features), num_targets, horizon)
         lstm_model.compile(optimizer="adam", loss="mse", metrics=["mae"])

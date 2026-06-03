@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 print(os.getcwd())
 
 from src.preprocessing.read import create_complete_df
-from src.preprocessing.scaling import split_data
+from src.preprocessing.split import split_data
 
 
 def main():
