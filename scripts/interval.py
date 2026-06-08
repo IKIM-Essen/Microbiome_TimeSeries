@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import pickle
 import sys
 
 import numpy as np
@@ -16,6 +15,24 @@ from src.evaluation.ensemble import predict_interval
 from src.utils.config import extract_species
 #from src.evaluation.outlier import find_interval_violations
 
+
+def prediction_interval_to_df(prediction_interval, species):
+    records = []
+    for species_idx, species_name in enumerate(species):
+        upper, lower, mean = prediction_interval[species_idx]
+        if not (len(upper) == len(lower) == len(mean)):
+            raise ValueError("Prediction interval arrays must be the same length for each species")
+        for time_idx in range(len(mean)):
+            records.append({
+                "species": species_name,
+                "timepoint": time_idx,
+                "lower": lower[time_idx],
+                "upper": upper[time_idx],
+                "mean": mean[time_idx],
+            })
+    return pd.DataFrame.from_records(records)
+
+
 def main():
     # Configure logging
     logging.basicConfig(
@@ -26,7 +43,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Create an output for the prediction interval and it's potential violations.",
-        epilog="Example usage: python scripts/interval.py --num-models 50 --splits-input results/intermediate/splits.npz --scaler results/models/scaler.pkl --tcn-path results/models/tcn_model.h5 --lstm-path results/models/lstm_model.h5 --output results/tables/prediction_interval.pkl"
+        epilog="Example usage: python scripts/interval.py --num-models 50 --splits-input results/intermediate/splits.npz --scaler results/models/scaler.pkl --tcn-path results/models/tcn_model.h5 --lstm-path results/models/lstm_model.h5 --output results/tables/prediction_interval.tsv"
     )
 
     parser.add_argument("--num-models", type=int, default = 5, help="Number of models to train and include in the ensemble.")
@@ -34,7 +51,7 @@ def main():
     parser.add_argument("--scaler", type = str, default="results/models/scaler.pkl", help="Path to the saved scaler pickle file.")
     parser.add_argument("--tcn-path", type=str, default="results/models/tcn_model.h5", help="Path to the saved TCN model file.")
     parser.add_argument("--lstm-path", type=str, default="results/models/lstm_model.h5", help="Path to the saved LSTM model file.")
-    parser.add_argument("--output", type = str, default="results/models/prediction_interval.pkl", help="Path to the saved prediction interval file.")
+    parser.add_argument("--output", type = str, default="results/tables/prediction_interval.tsv", help="Path to the saved prediction interval TSV file.")
 
     
     args = parser.parse_args()
@@ -67,16 +84,19 @@ def main():
         species,
         args.tcn_path,
         args.lstm_path,
-        args.output
     )
     
     # Ensure output directory exists
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    output_dir = os.path.dirname(args.output)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
     
-    # Save prediction interval to output file
-    logger.info("Saving prediction interval to %s", args.output)
-    with open(args.output, 'wb') as f:
-        pickle.dump(prediction_interval, f)
+    # Convert prediction interval into TSV-friendly dataframe
+    prediction_interval_df = prediction_interval_to_df(prediction_interval, species)
+
+    # Save prediction interval to TSV
+    logger.info("Saving prediction interval TSV to %s", args.output)
+    prediction_interval_df.to_csv(args.output, sep='\t', index=False)
     logger.info("Prediction interval successfully saved")
 
 
