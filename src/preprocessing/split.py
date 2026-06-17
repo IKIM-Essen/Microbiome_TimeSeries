@@ -20,7 +20,7 @@ if not logger.handlers:
     file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
     logger.addHandler(file_handler)
 
-def split_data(complete, num_taxa):
+def split_data(complete, num_taxa, split_sizes_path="results/intermediate/split_sizes.pkl"):
     logger.info("Splitting data for %s taxa", num_taxa)
     scaled_data, scaler = scale_date(complete)
     count = sum(not col.startswith("Target") and not col.startswith("Time") for col in complete.columns)
@@ -37,4 +37,11 @@ def split_data(complete, num_taxa):
     X_test = X_test.reshape(X_test.shape[0], 1, X_test.shape[1])
     logger.info("Split sizes X_train=%s y_train=%s X_val=%s y_val=%s X_test=%s y_test=%s",
                 X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape)
+    
+    # Save split sizes for later use
+    split_sizes = {"train_size": train_size, "val_size": val_size}
+    os.makedirs(os.path.dirname(split_sizes_path), exist_ok=True)
+    dump(split_sizes, split_sizes_path)
+    logger.info("Saved split sizes to %s", split_sizes_path)
+    
     return X_train, y_train, X_val, y_val, X_test, y_test

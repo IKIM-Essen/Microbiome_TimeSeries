@@ -29,6 +29,7 @@ def main():
     parser.add_argument("--mapping-output", type=str, default="results/intermediate/dic_TargTax.pkl", help="Path to save the target taxa mapping pickle file.")
     parser.add_argument("--split-data", action="store_true", help="Also scale and split the complete dataset after creation.")
     parser.add_argument("--splits-output", type=str, default="results/intermediate/splits.npz", help="Path to save the split numpy batches.")
+    parser.add_argument("--splits-sizes", type=str, default="results/intermediate/split_sizes.pkl", help="Path to save the split sizes.")
 
     args = parser.parse_args()
 
@@ -48,7 +49,8 @@ def main():
     if args.split_data:
         X_train, y_train, X_val, y_val, X_test, y_test = split_data(
             complete_df,
-            number_taxa
+            number_taxa,
+            args.splits_sizes,
         )
         os.makedirs(os.path.dirname(args.splits_output), exist_ok=True)
         np.savez_compressed(
