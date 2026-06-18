@@ -34,8 +34,8 @@ def main():
     parser.add_argument("--scaler-path", type=str, default="results/models/scaler.pkl", help="Path to the saved scaler pickle file (unused by raw prediction).")
     parser.add_argument("--prediction-interval", type=str, default="results/tables/prediction_interval.tsv", help="Path to save the model's prediction interval.")
     parser.add_argument("--predictions", type=str, default=None, help="Optional NPZ file containing pred_train, pred_val, pred_test arrays")
-    parser.add_argument("--violations-output", type=str, default="results/tables/prediction_interval_violations.tsv", help="Path to save the model's interval violations.")
-    parser.add_argument("--plot-results", type=str, default="results/tables/plot_taxa_violations.html", help="Path to plot of results.")
+    parser.add_argument("--anomalies-output", type=str, default="results/tables/prediction_interval_anomalies.tsv", help="Path to save the model's interval anomalies.")
+    parser.add_argument("--plot-results", type=str, default="results/tables/plot_taxa_anomalies.html", help="Path to plot of results.")
     parser.add_argument("--train-percentage", type=float, default=0.5)
     parser.add_argument("--val-percentage", type=float, default=0.1)
 
@@ -49,7 +49,7 @@ def main():
     X_test = splits["X_test"]
     logger.info("Successfully loaded splits. X_train shape: %s, X_val shape: %s, X_test shape: %s", X_train.shape, X_val.shape, X_test.shape)
 
-    violations = retrain_model(
+    anomalies = retrain_model(
         args.timeseries,
         args.taxa,
         args.metadata,
@@ -58,12 +58,12 @@ def main():
         args.scaler_path,
         args.prediction_interval,
         args.predictions,
-        args.violations_output,
+        args.anomalies_output,
         args.train_percentage,
         args.val_percentage
     )
 
-    plot_taxa_dropdown(args.timeseries, "results/intermediate/dic_TargTax.pkl", violations, args.prediction_interval, args.predictions, args.plot_results)
+    plot_taxa_dropdown(args.timeseries, "results/intermediate/dic_TargTax.pkl", anomalies, args.prediction_interval, args.predictions, args.plot_results)
 
 
 

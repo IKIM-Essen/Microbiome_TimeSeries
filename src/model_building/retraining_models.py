@@ -11,7 +11,7 @@ from src.utils.config import load_model_if_path, reshape, prediction_interval_to
 from src.model_building.predict import predict_retrain
 from src.evaluation.evaluation_metrics import combine_metrics
 from src.evaluation.ensemble import predict_interval
-from src.evaluation.outlier import find_interval_violations
+from src.evaluation.outlier import find_interval_anomalies
 
 # Setup logging for model-building and training operations
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
@@ -26,7 +26,7 @@ if not logger.handlers:
     logger.addHandler(file_handler)
 
 
-def retrain_model(timeseries, taxalist, exo, tcn_path, lstm_path, scaler, output_path, predictions_out, violations_path, train_percentage, val_percentage):
+def retrain_model(timeseries, taxalist, exo, tcn_path, lstm_path, scaler, output_path, predictions_out, anomalies_path, train_percentage, val_percentage):
     retraining = True
     print("Read new model data")
     new_timeseries, metadata_woT, num_taxa, new_taxa = create_complete_df(timeseries, taxalist, exo)
@@ -75,7 +75,7 @@ def retrain_model(timeseries, taxalist, exo, tcn_path, lstm_path, scaler, output
 
     prediction_inter = predict_interval(50, X_train, y_train, X_val, y_val, X_test, y_test, scaler, new_taxa, tcn_path, lstm_path, retraining)
 
-    violations_df = find_interval_violations(
+    anomalies_df = find_interval_anomalies(
         new_timeseries,
         prediction_inter,
         new_taxa,
@@ -83,10 +83,10 @@ def retrain_model(timeseries, taxalist, exo, tcn_path, lstm_path, scaler, output
         target_prefix="Target",
         date_column="Time",
         skip_first=1,
-        csv_path=violations_path
+        csv_path=anomalies_path
     )
 
     prediction_interval_df = prediction_interval_to_df(prediction_inter, new_taxa)
     prediction_interval_df.to_csv(output_path, sep='\t', index=False)
 
-    return violations_df
+    return anomalies_df

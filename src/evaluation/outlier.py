@@ -15,7 +15,7 @@ if not logger.handlers:
     file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
     logger.addHandler(file_handler)
 
-def find_interval_violations(
+def find_interval_anomalies(
     complete,
     prediction_intervals,
     dic_taxa,
@@ -50,7 +50,7 @@ def find_interval_violations(
     test_df = complete.iloc[val_start:].reset_index(drop=True)
     times = test_df[date_column].tolist()
 
-    violations = []
+    anomalies = []
     for target_idx, interval in enumerate(prediction_intervals):
         upper, lower, _ = interval
         if skip_first:
@@ -70,7 +70,7 @@ def find_interval_violations(
             zip(times, actual_values, upper, lower)
         ):
             if actual > u or actual < l:
-                violations.append({
+                anomalies.append({
                     "Time": time,
                     "Target": target_name,
                     "Taxa": dic_taxa.get(target_name, ""),
@@ -81,7 +81,7 @@ def find_interval_violations(
                     "TestIndex": row_idx
                 })
 
-    violations_df = pd.DataFrame(violations)
+    anomalies_df = pd.DataFrame(anomalies)
     if csv_path is not None:
-        violations_df.to_csv(csv_path, index=False)
-    return violations_df
+        anomalies_df.to_csv(csv_path, index=False)
+    return anomalies_df

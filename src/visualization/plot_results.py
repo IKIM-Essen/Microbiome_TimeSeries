@@ -58,7 +58,7 @@ def parse_target_index(target_col):
     raise ValueError(f"Unrecognized target column '{target_col}'")
 
 
-def plot_taxa_dropdown(complete_csv, dic_taxa_path, violations_tsv, prediction_interval_tsv, predictions_npz, output_html="results/tables/plot_taxa_violations.html"):
+def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_interval_tsv, predictions_npz, output_html="results/tables/plot_taxa_anomalies.html"):
     logger.info("Loading complete dataframe from %s", complete_csv)
     complete = pd.read_csv(complete_csv, parse_dates=["Time"])
     dic_taxa = load_taxa_mapping(dic_taxa_path)
@@ -66,8 +66,8 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, violations_tsv, prediction_i
     # Use mapping values as taxa names and keys as target columns
     all_taxa = [(target, taxa_name) for target, taxa_name in dic_taxa.items()]
 
-    logger.info("Loading violations from %s", violations_tsv)
-    violations = pd.read_csv(violations_tsv, sep="\t")
+    logger.info("Loading anomalies from %s", anomalies_tsv)
+    anomalies = pd.read_csv(anomalies_tsv, sep="\t")
 
     interval_df = None
     if prediction_interval_tsv and os.path.exists(prediction_interval_tsv):
@@ -127,21 +127,21 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, violations_tsv, prediction_i
             row=1, col=1,
         )
 
-        target_violations = violations[violations["Target"] == target_col]
+        target_anomalies = anomalies[anomalies["Target"] == target_col]
         v_times = None
-        if not target_violations.empty and "Time" in target_violations.columns:
+        if not target_anomalies.empty and "Time" in target_anomalies.columns:
             try:
-                v_times = pd.to_datetime(target_violations["Time"])
+                v_times = pd.to_datetime(target_anomalies["Time"])
             except Exception:
-                v_times = target_violations["Time"]
+                v_times = target_anomalies["Time"]
 
         fig.add_trace(
             go.Scatter(
-                x=v_times if v_times is not None else target_violations.index,
-                y=target_violations["Actual"] if not target_violations.empty else [],
+                x=v_times if v_times is not None else target_anomalies.index,
+                y=target_anomalies["Actual"] if not target_anomalies.empty else [],
                 mode="markers",
                 marker=dict(symbol="x", color="black", size=10),
-                name="Violations",
+                name="Anomalies",
                 hovertemplate="<b>Date:</b> %{x|%Y-%m-%d}<br><b>Actual:</b> %{y:.2f}<extra></extra>",
                 visible=visible,
             ),
@@ -270,10 +270,10 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, violations_tsv, prediction_i
                 col=1,
             )
 
-        if target_violations.empty:
+        if target_anomalies.empty:
             fig.add_trace(
                 go.Table(
-                    header=dict(values=["No violations for selected taxa"]),
+                    header=dict(values=["No anomalies for selected taxa"]),
                     cells=dict(values=[[]]),
                     visible=visible,
                 ),
@@ -282,7 +282,7 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, violations_tsv, prediction_i
             )
         else:
             display_cols = ["Time", "Actual", "Lower", "Upper", "Violation"]
-            table_df = target_violations[display_cols].copy()
+            table_df = target_anomalies[display_cols].copy()
             table_df["Time"] = table_df["Time"].astype(str)
             cells = [table_df[col].tolist() for col in table_df.columns]
             fig.add_trace(
@@ -309,12 +309,12 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, violations_tsv, prediction_i
             dict(
                 label=taxa_name,
                 method="update",
-                args=[{"visible": button_visibility}, {"title": f"Time series and interval violations for {taxa_name}"}],
+                args=[{"visible": button_visibility}, {"title": f"Time series and anomalies for {taxa_name}"}],
             )
         )
 
     fig.update_layout(
-        title=f"Time series and interval violations for {included_taxa[0][1]}",
+        title=f"Time series and anomalies for {included_taxa[0][1]}",
         xaxis_title="Date",
         yaxis_title="Value",
         template="plotly_white",

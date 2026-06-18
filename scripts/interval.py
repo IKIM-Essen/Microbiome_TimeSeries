@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 print(os.getcwd())
 
 from src.evaluation.ensemble import predict_interval
-from src.evaluation.outlier import find_interval_violations
+from src.evaluation.outlier import find_interval_anomalies
 from src.utils.config import extract_species, prediction_interval_to_df
 
 """
@@ -43,7 +43,7 @@ def main():
     logger = logging.getLogger(__name__)
 
     parser = argparse.ArgumentParser(
-        description="Create an output for the prediction interval and it's potential violations.",
+        description="Create an output for the prediction interval and it's potential anomalies.",
         epilog="Example usage: python scripts/interval.py --num-models 50 --splits-input results/intermediate/splits.npz --scaler results/models/scaler.pkl --tcn-path results/models/tcn_model.h5 --lstm-path results/models/lstm_model.h5 --output results/tables/prediction_interval.tsv"
     )
 
@@ -55,7 +55,7 @@ def main():
     parser.add_argument("--output", type = str, default="results/tables/prediction_interval.tsv", help="Path to the saved prediction interval TSV file.")
     parser.add_argument("--complete-input", type=str, default="results/tables/complete_df.csv", help="Path to the complete dataframe CSV file used for violation detection.")
     parser.add_argument("--dic-taxa", type=str, default="results/intermediate/dic_TargTax.pkl", help="Path to the target-to-taxa mapping pickle file.")
-    parser.add_argument("--violations-output", type=str, default="results/tables/prediction_interval_violations.tsv", help="Path to save detected interval violations as TSV.")
+    parser.add_argument("--anomalies-output", type=str, default="results/tables/prediction_interval_anomalies.tsv", help="Path to save detected interval anomalies as TSV.")
 
     args = parser.parse_args()
     logger.info("Starting evaluation with arguments: %s", args)
@@ -112,22 +112,22 @@ def main():
         dic_taxa = pickle.load(mapping_file)
 
     val_start = X_train.shape[0] + X_val.shape[0]
-    logger.info("Detecting interval violations starting at row index %s", val_start)
-    violations_df = find_interval_violations(
+    logger.info("Detecting anomalies starting at row index %s", val_start)
+    anomalies_df = find_interval_anomalies(
         complete=complete_df,
         prediction_intervals=prediction_interval,
         dic_taxa=dic_taxa,
         val_start=val_start,
         csv_path=None,
     )
-    logger.info("Found %s interval violations", len(violations_df))
+    logger.info("Found %s anomalies", len(anomalies_df))
 
-    violations_output_dir = os.path.dirname(args.violations_output)
-    if violations_output_dir:
-        os.makedirs(violations_output_dir, exist_ok=True)
-    logger.info("Saving interval violations to %s", args.violations_output)
-    violations_df.to_csv(args.violations_output, sep='\t', index=False)
-    logger.info("Interval violations successfully saved")
+    anomalies_output_dir = os.path.dirname(args.anomalies_output)
+    if anomalies_output_dir:
+        os.makedirs(anomalies_output_dir, exist_ok=True)
+    logger.info("Saving interval anomalies to %s", args.anomalies_output)
+    anomalies_df.to_csv(args.anomalies_output, sep='\t', index=False)
+    logger.info("Interval anomalies successfully saved")
 
 
 if __name__ == "__main__":
