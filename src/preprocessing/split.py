@@ -55,7 +55,7 @@ def split_without_scaling(scaled_data, num_taxa, train_percentage, val_percentag
     y = scaled_data[:, 0:num_taxa+count]
     # Split the data into training and testing sets
     train_size = int(len(X) * train_percentage)
-    val_size = int(len(X)* val_percentage)
+    val_size = int(len(X)* (train_percentage+val_percentage))
     X_train, X_val, X_test = X[0:train_size], X[train_size:val_size], X[val_size:]
     y_train, y_val, y_test = y[0:train_size], y[train_size:val_size], y[val_size:]
     X_train = X_train.reshape(X_train.shape[0], 1, X_train.shape[1])

@@ -37,7 +37,7 @@ def main():
     parser.add_argument("--violations-output", type=str, default="results/tables/prediction_interval_violations.tsv", help="Path to save the model's interval violations.")
     parser.add_argument("--plot-results", type=str, default="results/tables/plot_taxa_violations.html", help="Path to plot of results.")
     parser.add_argument("--train-percentage", type=float, default=0.5)
-    parser.add_argument("--val-percentage", type=float, default=0.6)
+    parser.add_argument("--val-percentage", type=float, default=0.1)
 
     args = parser.parse_args()
     logger.info("Starting prediction with arguments: %s", args)
