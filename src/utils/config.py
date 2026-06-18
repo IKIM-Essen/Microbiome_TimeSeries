@@ -44,3 +44,35 @@ def prediction_interval_to_df(prediction_interval, species):
                 "mean": mean[time_idx],
             })
     return pd.DataFrame.from_records(records)
+
+
+def load_profile(path="config/profile.yaml"):
+    """Load a pipeline profile YAML and return as a dict.
+
+    Defaults to `config/profile.yaml` inside the repository. This is a thin
+    wrapper around `load_config` to make intent clearer in the codebase.
+    """
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Profile file not found: {path}")
+    return load_config(path)
+
+
+def validate_profile(profile, required_keys=None):
+    """Basic validation for a loaded profile.
+
+    - `required_keys` can be a list of top-level keys that must exist (e.g.
+      ['data','model','output']). Raises `ValueError` if a required key is
+      missing. Returns True on success.
+    """
+    if required_keys is None:
+        required_keys = ["data", "output"]
+
+    missing = [k for k in required_keys if k not in profile]
+    if missing:
+        raise ValueError(f"Profile missing required keys: {missing}")
+
+    # Optionally add simple structural checks
+    if not isinstance(profile.get("data", {}), dict):
+        raise ValueError("Profile 'data' section must be a mapping of paths")
+
+    return True

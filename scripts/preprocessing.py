@@ -27,7 +27,7 @@ def main():
     parser.add_argument("--include-metadata", type = bool, default=False, help="Whether to include metadata in the output dataframe. Default is False.")
     parser.add_argument("--output", type=str, default="results/tables/complete_df.csv", help="Path to the output file (CSV format). If not provided, the output will be saved as 'results/tables/complete_df.csv'.")
     parser.add_argument("--mapping-output", type=str, default="results/intermediate/dic_TargTax.pkl", help="Path to save the target taxa mapping pickle file.")
-    parser.add_argument("--split-data", action="store_true", help="Also scale and split the complete dataset after creation.")
+    parser.add_argument("--split-data", action="store_true", default = True, help="Also scale and split the complete dataset after creation.")
     parser.add_argument("--splits-output", type=str, default="results/intermediate/splits.npz", help="Path to save the split numpy batches.")
     parser.add_argument("--splits-sizes", type=str, default="results/intermediate/split_sizes.pkl", help="Path to save the split sizes.")
 

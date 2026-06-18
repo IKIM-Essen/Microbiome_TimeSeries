@@ -1,0 +1,50 @@
+# ===============================
+# YAML file holding the profile for the running of this machine learning pipeline.
+# Please check it carefully and make alterations, where needed.
+# ===============================
+
+# ===============================
+# General information, please add the name of your project (the folder will have that name) as well as
+# folders for input and output if they should differ from the default.
+# ===============================
+
+project:
+  name: tcn_residual_experiment_01
+  base_dir: results
+  input_dir: data
+
+# ===============================
+# Parameters you should definitely check before running the code. The default is working great though!
+# ===============================
+
+parameters:
+  retraining: False
+  training_percentage: 0.7
+  validation_percentage: 0.1
+  include_metadata: True
+  number_ensemble_model: 50
+
+model_architecture:
+  tcn_lstm_residuals: True
+  attention: False
+  lstm: False
+
+# ===============================
+# Folder names for the output, change if you want, but the default makes quite sense, trust me.
+# ===============================
+
+paths:
+  logs: logs
+  models: models
+  figures: figures
+  tables: tables
+  intermediate: intermediate
+
+# ===============================
+# If your input files are called differently and you don't want to remove them, please do that here.
+# ===============================
+
+input_files:
+  timeseries: timeseries.tsv
+  taxa: taxa.tsv
+  metadata: metadata.tsv
