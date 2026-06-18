@@ -14,9 +14,9 @@ print(os.getcwd())
 
 from src.evaluation.ensemble import predict_interval
 from src.evaluation.outlier import find_interval_violations
-from src.utils.config import extract_species
+from src.utils.config import extract_species, prediction_interval_to_df
 
-
+"""
 def prediction_interval_to_df(prediction_interval, species):
     records = []
     for species_idx, species_name in enumerate(species):
@@ -32,7 +32,7 @@ def prediction_interval_to_df(prediction_interval, species):
                 "mean": mean[time_idx],
             })
     return pd.DataFrame.from_records(records)
-
+"""
 
 def main():
     # Configure logging
