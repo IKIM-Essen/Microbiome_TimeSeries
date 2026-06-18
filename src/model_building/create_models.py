@@ -9,6 +9,8 @@ import keras
 import tensorflow as tf
 from tensorflow.keras import layers, models
 
+from src.utils.config import load_model_if_path
+
 # Setup logging for model-building and training operations
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 LOG_DIR = os.path.join(ROOT_DIR, "logs", "training")
@@ -102,3 +104,20 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, tcn_path, lstm_path):
     except Exception as e:
         logger.error("Error during model fitting: %s", str(e), exc_info=True)
         raise
+
+
+def fit_model_retraining(X_train, y_train, X_val, y_val, tcn, lstm):
+
+    tcn = load_model_if_path(tcn)
+    lstm = load_model_if_path(lstm)
+
+    tcn.fit(X_train, y_train, epochs=10, batch_size=32, validation_data = (X_val,y_val))
+    # --- Compute residuals ---
+    y_pred_tcn_train = tcn.predict(X_train)
+    residuals = y_train - y_pred_tcn_train
+
+    y_pred_tcn_val = tcn.predict(X_val)
+    residuals_val = y_val - y_pred_tcn_val
+
+    lstm.fit(X_train, residuals, epochs=10, batch_size=32, validation_data = (X_val, residuals_val))
+    return tcn, lstm

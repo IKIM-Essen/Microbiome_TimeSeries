@@ -32,15 +32,15 @@ def scale_date(complete, scaler_path="results/models/scaler.pkl"):
     logger.info("Scaled data shape %s and saved scaler", scaled_data.shape)
     return scaled_data, scaler
 
-def scale_data_with_scaler(complete, scaler_path="results/models/scaler.pkl", scaler_update="results/models/scaler_updated.pkl"):
+def scale_data_with_scaler(complete, scaler_path="results/models/scaler.pkl"):  # scaler_update="results/models/scaler_updated.pkl"
     logger.info("Scaling complete dataframe with existing scaler %s", scaler_path)
     complete = complete.dropna()
     scaler = load(open(str(scaler_path), 'rb'))
     complete_woT = complete.drop(['Time'], axis=1)
     scaled_data = scaler.transform(complete_woT)
-    dump(scaler, open(str(scaler_update), 'wb'))
-    logger.info("Scaled data using existing scaler, saved updated scaler to %s", scaler_update)
-    return scaled_data, scaler
+    #dump(scaler, open(str(scaler_update), 'wb'))
+    #logger.info("Scaled data using existing scaler, saved updated scaler to %s", scaler_update)
+    return scaled_data
 
 def inverse_scale_data(scaled_data, scaler_path="results/models/scaler.pkl"):
     logger.info("Inversely scaling data with scaler %s", scaler_path)

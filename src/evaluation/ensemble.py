@@ -1,11 +1,11 @@
 import numpy as np
 from pickle import dump, load
 
-from src.model_building.create_models import fit_model, ensemble_predict
+from src.model_building.create_models import fit_model, ensemble_predict, fit_model_retraining
 from src.utils.config import reshape
 from src.preprocessing.scaling import inverse_scale_data
 
-def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, scaler_path, species, tcn_path, lstm_path):
+def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, scaler_path, species, tcn_path, lstm_path, retraining = False):
     # make predictions
 
     ensemble = []
@@ -13,7 +13,11 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, sc
     yhat_list = []
     for i in range(number_models):
         # define and fit the model on the training set
-        tcn_model,lstm_model = fit_model(Xtrain, Ytrain, Xval, Yval, species, tcn_path, lstm_path)
+        if retraining == False:
+            tcn_model,lstm_model = fit_model(Xtrain, Ytrain, Xval, Yval, species, tcn_path, lstm_path)
+
+        elif retraining == True:
+            tcn_model,lstm_model = fit_model_retraining(Xtrain, Ytrain, Xval, Yval, species, tcn_path, lstm_path)
 
         # Make predictions on the test set
         predictions_val = ensemble_predict(tcn_model, lstm_model, Xval)
