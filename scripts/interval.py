@@ -16,23 +16,6 @@ from src.evaluation.ensemble import predict_interval
 from src.evaluation.outlier import find_interval_anomalies
 from src.utils.config import extract_species, prediction_interval_to_df
 
-"""
-def prediction_interval_to_df(prediction_interval, species):
-    records = []
-    for species_idx, species_name in enumerate(species):
-        upper, lower, mean = prediction_interval[species_idx]
-        if not (len(upper) == len(lower) == len(mean)):
-            raise ValueError("Prediction interval arrays must be the same length for each species")
-        for time_idx in range(len(mean)):
-            records.append({
-                "species": species_name,
-                "timepoint": time_idx,
-                "lower": lower[time_idx],
-                "upper": upper[time_idx],
-                "mean": mean[time_idx],
-            })
-    return pd.DataFrame.from_records(records)
-"""
 
 def main():
     # Configure logging
