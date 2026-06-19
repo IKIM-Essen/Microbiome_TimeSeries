@@ -6,15 +6,21 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+ROOT_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+)
 LOG_DIR = os.path.join(ROOT_DIR, "logs", "visualization")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 if not logger.handlers:
-    file_handler = logging.FileHandler(os.path.join(LOG_DIR, "plot_original_timeseries.log"))
-    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    file_handler = logging.FileHandler(
+        os.path.join(LOG_DIR, "plot_original_timeseries.log")
+    )
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    )
     logger.addHandler(file_handler)
 
 
@@ -43,7 +49,9 @@ def _load_bacteria_mapping(bacteria):
         columns = bacteria
         labels = bacteria
     else:
-        raise ValueError("bacteria must be a mapping path, dict, or list of column names")
+        raise ValueError(
+            "bacteria must be a mapping path, dict, or list of column names"
+        )
     return columns, labels
 
 
@@ -62,7 +70,11 @@ def time_series_analysis_plot(dataframe_complete_path, filename, bacteria):
         If a dict, keys are dataframe columns and values are legend labels.
         If a list, it should contain dataframe column names.
     """
-    logger.info("Starting time series analysis plot: dataframe=%s, output=%s", dataframe_complete_path, filename)
+    logger.info(
+        "Starting time series analysis plot: dataframe=%s, output=%s",
+        dataframe_complete_path,
+        filename,
+    )
 
     # Load the complete data frame from disk and resolve the bacteria mapping.
     dataframe_complete = pd.read_csv(dataframe_complete_path, parse_dates=["Time"])
@@ -102,7 +114,11 @@ def time_series_analysis_plot(dataframe_complete_path, filename, bacteria):
                 )
             )
         else:
-            logger.error("Column '%s' not found in dataframe_complete columns %s", column, list(dataframe_complete.columns))
+            logger.error(
+                "Column '%s' not found in dataframe_complete columns %s",
+                column,
+                list(dataframe_complete.columns),
+            )
             raise KeyError(f"Column '{column}' not found in dataframe_complete")
 
     # Configure the interactive layout and legend.
@@ -118,11 +134,11 @@ def time_series_analysis_plot(dataframe_complete_path, filename, bacteria):
             xanchor="left",
             x=1.02,
             font=dict(size=10),
-            itemsizing="trace"
+            itemsizing="trace",
         ),
         margin=dict(l=80, r=320, t=120, b=80),
         hovermode="closest",
-        template="plotly_white"
+        template="plotly_white",
     )
 
     # Save the interactive plot to an HTML file.

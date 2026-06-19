@@ -1,11 +1,29 @@
 import numpy as np
 from pickle import dump, load
 
-from src.model_building.create_models import fit_model, ensemble_predict, fit_model_retraining
+from src.model_building.create_models import (
+    fit_model,
+    ensemble_predict,
+    fit_model_retraining,
+)
 from src.utils.config import reshape
 from src.preprocessing.scaling import inverse_scale_data
 
-def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, scaler_path, species, tcn_path, lstm_path, retraining = False):
+
+def predict_interval(
+    number_models,
+    Xtrain,
+    Ytrain,
+    Xval,
+    Yval,
+    Xtest,
+    Ytest,
+    scaler_path,
+    species,
+    tcn_path,
+    lstm_path,
+    retraining=False,
+):
     # make predictions
 
     ensemble = []
@@ -14,10 +32,14 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, sc
     for i in range(number_models):
         # define and fit the model on the training set
         if retraining == False:
-            tcn_model,lstm_model = fit_model(Xtrain, Ytrain, Xval, Yval, species, tcn_path, lstm_path)
+            tcn_model, lstm_model = fit_model(
+                Xtrain, Ytrain, Xval, Yval, species, tcn_path, lstm_path
+            )
 
         elif retraining == True:
-            tcn_model,lstm_model = fit_model_retraining(Xtrain, Ytrain, Xval, Yval, species, tcn_path, lstm_path)
+            tcn_model, lstm_model = fit_model_retraining(
+                Xtrain, Ytrain, Xval, Yval, species, tcn_path, lstm_path
+            )
 
         # Make predictions on the test set
         predictions_val = ensemble_predict(tcn_model, lstm_model, Xval)
@@ -26,8 +48,7 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, sc
 
         y_val_tcn = inverse_scale_data(y_val_tcn, scaler_path)
 
-
-        yhat = y_val_tcn[:len(species)]
+        yhat = y_val_tcn[: len(species)]
         ensemble.append(yhat)
         yhat_species = []
         y = 0
@@ -37,14 +58,12 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, sc
             y += 1
         yhat_list.append(yhat_species)
 
-
     stacked = np.stack(ensemble, axis=0)
     # Reshape to (3*14, 1544)
     reshaped = stacked.reshape(-1, Xtrain.shape[2])  # shape: (42, 1544)
 
     # Variance over timepoints and repetitions
     feature_variance = np.var(reshaped, axis=0, ddof=1)  # shape: (1544,)
-
 
     mean_prediction = np.mean(stacked, axis=0)
 
@@ -57,8 +76,8 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, sc
     # -- In case of non-distributional use --
     # For asymmetric intervals compute quantiles of residuals:
     alpha = 0.05
-    q_low = np.quantile(residuals, alpha/2, axis=0)       # e.g. 0.025 quantile
-    q_high = np.quantile(residuals, 1 - alpha/2, axis=0) 
+    q_low = np.quantile(residuals, alpha / 2, axis=0)  # e.g. 0.025 quantile
+    q_high = np.quantile(residuals, 1 - alpha / 2, axis=0)
 
     # Widths relative to mean
     lower_width = np.abs(q_low)
@@ -104,7 +123,7 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, sc
 
         predictions_reshaped = inverse_scale_data(y_test_tcn)
 
-        yhat = predictions_reshaped[:len(species)]
+        yhat = predictions_reshaped[: len(species)]
         ensemble_2.append(yhat)
 
     stacked_2 = np.stack(ensemble_2, axis=0)
@@ -117,10 +136,10 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, Ytest, sc
     i = 0
     while i < len(species):
         list_error = []
-        list_lower = [np.nan]*Xtrain.shape[1]
-        #print(len(list_lower)) =27
-        list_upper = [np.nan]*Xtrain.shape[1]
-        list_mean = [np.nan]*Xtrain.shape[1]
+        list_lower = [np.nan] * Xtrain.shape[1]
+        # print(len(list_lower)) =27
+        list_upper = [np.nan] * Xtrain.shape[1]
+        list_mean = [np.nan] * Xtrain.shape[1]
         y = 0
         while y < mean_prediction_2.shape[1]:
             lower = mean_prediction_2[i][y] - lower_width[i]

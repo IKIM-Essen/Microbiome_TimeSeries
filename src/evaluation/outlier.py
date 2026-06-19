@@ -4,7 +4,9 @@ import pickle
 import numpy as np
 import pandas as pd
 
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+ROOT_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+)
 LOG_DIR = os.path.join(ROOT_DIR, "logs", "predicting")
 os.makedirs(LOG_DIR, exist_ok=True)
 
@@ -12,8 +14,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 if not logger.handlers:
     file_handler = logging.FileHandler(os.path.join(LOG_DIR, "outlier.log"))
-    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    )
     logger.addHandler(file_handler)
+
 
 def find_interval_anomalies(
     complete,
@@ -23,7 +28,7 @@ def find_interval_anomalies(
     target_prefix="Target",
     date_column="Time",
     skip_first=1,
-    csv_path=None
+    csv_path=None,
 ):
     """
     Compare actual test values to prediction interval bounds.
@@ -70,16 +75,18 @@ def find_interval_anomalies(
             zip(times, actual_values, upper, lower)
         ):
             if actual > u or actual < l:
-                anomalies.append({
-                    "Time": time,
-                    "Target": target_name,
-                    "Taxa": dic_taxa.get(target_name, ""),
-                    "Actual": actual,
-                    "Lower": l,
-                    "Upper": u,
-                    "Violation": "above" if actual > u else "below",
-                    "TestIndex": row_idx
-                })
+                anomalies.append(
+                    {
+                        "Time": time,
+                        "Target": target_name,
+                        "Taxa": dic_taxa.get(target_name, ""),
+                        "Actual": actual,
+                        "Lower": l,
+                        "Upper": u,
+                        "Violation": "above" if actual > u else "below",
+                        "TestIndex": row_idx,
+                    }
+                )
 
     anomalies_df = pd.DataFrame(anomalies)
     if csv_path is not None:

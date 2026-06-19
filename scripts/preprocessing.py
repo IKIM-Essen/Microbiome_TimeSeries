@@ -18,27 +18,68 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Create a complete dataframe with timeseries, metadata, and taxa data.",
-        epilog="Example usage: python scripts/preprocessing.py --timeseries PATH/TO/TIMESERIES --metadata PATH/TO/METADATA --taxa PATH/TO/TAXA --output PATH/TO/OUTPUT"
+        epilog="Example usage: python scripts/preprocessing.py --timeseries PATH/TO/TIMESERIES --metadata PATH/TO/METADATA --taxa PATH/TO/TAXA --output PATH/TO/OUTPUT",
     )
 
-    parser.add_argument("--timeseries", type=str, default = "data/timeseries.tsv",help="Path to the timeseries data file (CSV format).")
-    parser.add_argument("--metadata", type=str, default = "data/metadata.tsv", help="Path to the metadata file (CSV format).")
-    parser.add_argument("--taxa", type=str, default = "data/taxa.tsv", help="Path to the taxa data file (CSV format).")
-    parser.add_argument("--include-metadata", type = bool, default=False, help="Whether to include metadata in the output dataframe. Default is False.")
-    parser.add_argument("--output", type=str, default="results/tables/complete_df.csv", help="Path to the output file (CSV format). If not provided, the output will be saved as 'results/tables/complete_df.csv'.")
-    parser.add_argument("--mapping-output", type=str, default="results/intermediate/dic_TargTax.pkl", help="Path to save the target taxa mapping pickle file.")
-    parser.add_argument("--split-data", action="store_true", default = True, help="Also scale and split the complete dataset after creation.")
-    parser.add_argument("--splits-output", type=str, default="results/intermediate/splits.npz", help="Path to save the split numpy batches.")
-    parser.add_argument("--splits-sizes", type=str, default="results/intermediate/split_sizes.pkl", help="Path to save the split sizes.")
+    parser.add_argument(
+        "--timeseries",
+        type=str,
+        default="data/timeseries.tsv",
+        help="Path to the timeseries data file (CSV format).",
+    )
+    parser.add_argument(
+        "--metadata",
+        type=str,
+        default="data/metadata.tsv",
+        help="Path to the metadata file (CSV format).",
+    )
+    parser.add_argument(
+        "--taxa",
+        type=str,
+        default="data/taxa.tsv",
+        help="Path to the taxa data file (CSV format).",
+    )
+    parser.add_argument(
+        "--include-metadata",
+        type=bool,
+        default=False,
+        help="Whether to include metadata in the output dataframe. Default is False.",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="results/tables/complete_df.csv",
+        help="Path to the output file (CSV format). If not provided, the output will be saved as 'results/tables/complete_df.csv'.",
+    )
+    parser.add_argument(
+        "--mapping-output",
+        type=str,
+        default="results/intermediate/dic_TargTax.pkl",
+        help="Path to save the target taxa mapping pickle file.",
+    )
+    parser.add_argument(
+        "--split-data",
+        action="store_true",
+        default=True,
+        help="Also scale and split the complete dataset after creation.",
+    )
+    parser.add_argument(
+        "--splits-output",
+        type=str,
+        default="results/intermediate/splits.npz",
+        help="Path to save the split numpy batches.",
+    )
+    parser.add_argument(
+        "--splits-sizes",
+        type=str,
+        default="results/intermediate/split_sizes.pkl",
+        help="Path to save the split sizes.",
+    )
 
     args = parser.parse_args()
 
     complete_df, metadata, number_taxa, dic_TargTax = create_complete_df(
-        args.timeseries,
-        args.metadata,
-        args.taxa,
-        args.include_metadata,
-        args.output
+        args.timeseries, args.metadata, args.taxa, args.include_metadata, args.output
     )
 
     os.makedirs(os.path.dirname(args.mapping_output), exist_ok=True)

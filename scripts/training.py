@@ -21,19 +21,37 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 if not logger.handlers:
     file_handler = logging.FileHandler(os.path.join(LOG_DIR, "training.log"))
-    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    )
     logger.addHandler(file_handler)
+
 
 def main():
     try:
         parser = argparse.ArgumentParser(
             description="Train model on previously preprocessed data",
-            epilog="Example usage: python scripts/training.py "
+            epilog="Example usage: python scripts/training.py ",
         )
 
-        parser.add_argument("--splits-input", type=str, default="results/intermediate/splits.npz", help="Path to the saved split numpy batches.")
-        parser.add_argument("--tcn-path", type=str, default="results/models/tcn_model.h5", help="Path to save the trained TCN model.")
-        parser.add_argument("--lstm-path", type=str, default="results/models/lstm_model.h5", help="Path to save the trained LSTM model.")
+        parser.add_argument(
+            "--splits-input",
+            type=str,
+            default="results/intermediate/splits.npz",
+            help="Path to the saved split numpy batches.",
+        )
+        parser.add_argument(
+            "--tcn-path",
+            type=str,
+            default="results/models/tcn_model.h5",
+            help="Path to save the trained TCN model.",
+        )
+        parser.add_argument(
+            "--lstm-path",
+            type=str,
+            default="results/models/lstm_model.h5",
+            help="Path to save the trained LSTM model.",
+        )
 
         args = parser.parse_args()
         logger.info("Starting model training with splits from %s", args.splits_input)
@@ -49,7 +67,13 @@ def main():
         print(f"X_train={X_train.shape}, y_train={y_train.shape}")
         print(f"X_val={X_val.shape}, y_val={y_val.shape}")
         logger.info("Loaded split batches from %s", args.splits_input)
-        logger.info("X_train=%s, y_train=%s, X_val=%s, y_val=%s", X_train.shape, y_train.shape, X_val.shape, y_val.shape)
+        logger.info(
+            "X_train=%s, y_train=%s, X_val=%s, y_val=%s",
+            X_train.shape,
+            y_train.shape,
+            X_val.shape,
+            y_val.shape,
+        )
 
         # Train the TCN model and then fit the residual LSTM on TCN errors
         fit_model(
@@ -67,7 +91,9 @@ def main():
         print(f"Error: {e}")
         sys.exit(1)
     except Exception as e:
-        logger.error("An unexpected error occurred during training: %s", str(e), exc_info=True)
+        logger.error(
+            "An unexpected error occurred during training: %s", str(e), exc_info=True
+        )
         print(f"Error: {e}")
         sys.exit(1)
 

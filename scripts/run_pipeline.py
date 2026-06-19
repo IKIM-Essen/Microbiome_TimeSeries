@@ -19,7 +19,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from src.utils.config import load_profile, validate_profile
 
-VALID_REQUESTS = {"preprocess","train","predict","evaluate","visualize","retrain"}
+VALID_REQUESTS = {"preprocess", "train", "predict", "evaluate", "visualize", "retrain"}
+
 
 def _get_project_base(profile):
     base_dir = profile.get("project", {}).get("base_dir", "results")
@@ -57,34 +58,62 @@ def build_paths(profile):
     p = {}
     # input files
     input_files = profile.get("input_files", {})
-    p["timeseries"] = os.path.join(input_dir, input_files.get("timeseries", "timeseries.tsv"))
+    p["timeseries"] = os.path.join(
+        input_dir, input_files.get("timeseries", "timeseries.tsv")
+    )
     p["taxa"] = os.path.join(input_dir, input_files.get("taxa", "taxa.tsv"))
     p["metadata"] = os.path.join(input_dir, input_files.get("metadata", "metadata.tsv"))
 
     # output/derived files
     paths = profile.get("paths", {})
-    p["complete_csv"] = os.path.join(base, paths.get("tables", "tables"), "complete_df.csv")
-    p["mapping_output"] = os.path.join(base, paths.get("intermediate", "intermediate"), "dic_TargTax.pkl")
-    p["splits_output"] = os.path.join(base, paths.get("intermediate", "intermediate"), "splits.npz")
-    p["split_sizes"] = os.path.join(base, paths.get("intermediate", "intermediate"), "split_sizes.pkl")
-    p["predictions_npz"] = os.path.join(base, paths.get("intermediate", "intermediate"), "predictions.npz")
+    p["complete_csv"] = os.path.join(
+        base, paths.get("tables", "tables"), "complete_df.csv"
+    )
+    p["mapping_output"] = os.path.join(
+        base, paths.get("intermediate", "intermediate"), "dic_TargTax.pkl"
+    )
+    p["splits_output"] = os.path.join(
+        base, paths.get("intermediate", "intermediate"), "splits.npz"
+    )
+    p["split_sizes"] = os.path.join(
+        base, paths.get("intermediate", "intermediate"), "split_sizes.pkl"
+    )
+    p["predictions_npz"] = os.path.join(
+        base, paths.get("intermediate", "intermediate"), "predictions.npz"
+    )
     p["tcn_model"] = os.path.join(base, paths.get("models", "models"), "tcn_model.h5")
     p["lstm_model"] = os.path.join(base, paths.get("models", "models"), "lstm_model.h5")
-    p["evaluation_output"] = os.path.join(base, paths.get("tables", "tables"), "evaluation_metrics.tsv")
+    p["evaluation_output"] = os.path.join(
+        base, paths.get("tables", "tables"), "evaluation_metrics.tsv"
+    )
     return p
 
 
 def main():
     parser = argparse.ArgumentParser(description="Run full pipeline using profile YAML")
-    parser.add_argument("--profile", type=str, default="config/profile.yaml", help="Path to profile YAML")
-    parser.add_argument("--stages", type=str, default=None, help="Comma-separated stages to run (preprocess,train,predict,evaluate,visualize)")
-    parser.add_argument("--dry-run", action="store_true", help="Print commands without executing")
+    parser.add_argument(
+        "--profile",
+        type=str,
+        default="config/profile.yaml",
+        help="Path to profile YAML",
+    )
+    parser.add_argument(
+        "--stages",
+        type=str,
+        default=None,
+        help="Comma-separated stages to run (preprocess,train,predict,evaluate,visualize)",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print commands without executing"
+    )
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
 
     profile = load_profile(args.profile)
-    validate_profile(profile, required_keys=["project", "paths"]) 
+    validate_profile(profile, required_keys=["project", "paths"])
     _ensure_dirs(profile)
     pp = build_paths(profile)
 
@@ -105,8 +134,7 @@ def main():
 
     if invalid:
         raise ValueError(
-            f"Invalid requested values: {invalid}. "
-            f"Valid options: {VALID_REQUESTS}"
+            f"Invalid requested values: {invalid}. " f"Valid options: {VALID_REQUESTS}"
         )
 
     # Stage: preprocessing
@@ -121,31 +149,33 @@ def main():
 
     # Stage: training
     if (requested is None) or ("train" in requested):
-        cmd = (
-            f"python scripts/training.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']}"
-        )
+        cmd = f"python scripts/training.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']}"
         run_cmd(cmd, dry_run=args.dry_run)
 
     # Stage: prediction
     if (requested is None) or ("predict" in requested):
-        cmd = (
-            f"python scripts/prediction.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']} --output {pp['predictions_npz']}"
-        )
+        cmd = f"python scripts/prediction.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']} --output {pp['predictions_npz']}"
         run_cmd(cmd, dry_run=args.dry_run)
 
     # Stage: evaluation
     if (requested is None) or ("evaluate" in requested):
-        cmd = (
-            f"python scripts/evaluation.py --prediction-results {pp['predictions_npz']} --splits {pp['splits_output']} --output {pp['evaluation_output']}"
-        )
+        cmd = f"python scripts/evaluation.py --prediction-results {pp['predictions_npz']} --splits {pp['splits_output']} --output {pp['evaluation_output']}"
         run_cmd(cmd, dry_run=args.dry_run)
 
     # Stage: visualize (optional)
     if (requested is None) or ("visualize" in requested):
         # call the taxa violation plot if it exists
         project_base = _get_project_base(profile)
-        plot_out = os.path.join(project_base, profile.get("paths", {}).get("figures", "figures"), "plot_taxa_anomalies.html")
-        prediction_interval_path = os.path.join(project_base, profile.get("paths", {}).get("tables", "tables"), "prediction_interval.tsv")
+        plot_out = os.path.join(
+            project_base,
+            profile.get("paths", {}).get("figures", "figures"),
+            "plot_taxa_anomalies.html",
+        )
+        prediction_interval_path = os.path.join(
+            project_base,
+            profile.get("paths", {}).get("tables", "tables"),
+            "prediction_interval.tsv",
+        )
         cmd = (
             f"python scripts/plot_taxa_anomalies.py --prediction-interval {prediction_interval_path} "
             f"--predictions {pp['predictions_npz']} --split-sizes {pp['split_sizes']} --output {plot_out}"

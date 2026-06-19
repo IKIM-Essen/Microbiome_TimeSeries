@@ -9,16 +9,23 @@ from plotly.subplots import make_subplots
 
 from src.utils.config import get_num_taxa
 
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+ROOT_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+)
 LOG_DIR = os.path.join(ROOT_DIR, "logs", "visualization")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 if not logger.handlers:
-    file_handler = logging.FileHandler(os.path.join(LOG_DIR, "plot_visualize_results.log"))
-    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    file_handler = logging.FileHandler(
+        os.path.join(LOG_DIR, "plot_visualize_results.log")
+    )
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    )
     logger.addHandler(file_handler)
+
 
 def load_taxa_mapping(path):
     with open(path, "rb") as f:
@@ -58,7 +65,14 @@ def parse_target_index(target_col):
     raise ValueError(f"Unrecognized target column '{target_col}'")
 
 
-def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_interval_tsv, predictions_npz, output_html="results/tables/plot_taxa_anomalies.html"):
+def plot_taxa_dropdown(
+    complete_csv,
+    dic_taxa_path,
+    anomalies_tsv,
+    prediction_interval_tsv,
+    predictions_npz,
+    output_html="results/tables/plot_taxa_anomalies.html",
+):
     logger.info("Loading complete dataframe from %s", complete_csv)
     complete = pd.read_csv(complete_csv, parse_dates=["Time"])
     dic_taxa = load_taxa_mapping(dic_taxa_path)
@@ -80,7 +94,7 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_in
     val_size = None
     pred_train = pred_val = pred_test = None
 
-    #if split_sizes_path and os.path.exists(split_sizes_path):
+    # if split_sizes_path and os.path.exists(split_sizes_path):
     #    train_size, val_size = load_split_sizes(split_sizes_path)
 
     if predictions_npz and os.path.exists(predictions_npz):
@@ -94,7 +108,16 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_in
     train_size = pred_train.shape[0]
     val_size = pred_val.shape[0]
 
-    prediction_traces = 2 if (train_size is not None and val_size is not None and pred_train is not None and pred_val is not None) else 0
+    prediction_traces = (
+        2
+        if (
+            train_size is not None
+            and val_size is not None
+            and pred_train is not None
+            and pred_val is not None
+        )
+        else 0
+    )
     per_taxa_trace_count = 3 + prediction_traces + (5 if include_interval else 0)
 
     fig = make_subplots(
@@ -108,7 +131,9 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_in
     included_taxa = []
     for index, (target_col, taxa_name) in enumerate(all_taxa):
         if target_col not in complete.columns:
-            logger.warning("Target column %s missing from complete dataframe, skipping", target_col)
+            logger.warning(
+                "Target column %s missing from complete dataframe, skipping", target_col
+            )
             continue
 
         included_taxa.append((target_col, taxa_name))
@@ -121,10 +146,13 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_in
                 mode="lines+markers",
                 name="Actual values",
                 line=dict(width=2),
-                hovertemplate="<b>Taxa:</b> " + taxa_name + "<br><b>Date:</b> %{x|%Y-%m-%d}<br><b>Value:</b> %{y:.2f}<extra></extra>",
+                hovertemplate="<b>Taxa:</b> "
+                + taxa_name
+                + "<br><b>Date:</b> %{x|%Y-%m-%d}<br><b>Value:</b> %{y:.2f}<extra></extra>",
                 visible=visible,
             ),
-            row=1, col=1,
+            row=1,
+            col=1,
         )
 
         target_anomalies = anomalies[anomalies["Target"] == target_col]
@@ -145,25 +173,25 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_in
                 hovertemplate="<b>Date:</b> %{x|%Y-%m-%d}<br><b>Actual:</b> %{y:.2f}<extra></extra>",
                 visible=visible,
             ),
-            row=1, col=1,
+            row=1,
+            col=1,
         )
-        #print(interval_df)
+        # print(interval_df)
         if include_interval:
-            pi_slice = interval_df[interval_df["species"] == taxa_name].sort_values("timepoint")
-
-            interval_df["species"] = (
-                interval_df["species"]
-                .astype(str)
-                .str.strip("[]")
-                .str.strip("'")
+            pi_slice = interval_df[interval_df["species"] == taxa_name].sort_values(
+                "timepoint"
             )
 
-            #if taxa_name in interval_df["species"].values:
+            interval_df["species"] = (
+                interval_df["species"].astype(str).str.strip("[]").str.strip("'")
+            )
+
+            # if taxa_name in interval_df["species"].values:
             #    print(f"Found: {taxa_name}")
-            #print(taxa_name)
-            #print("1")
+            # print(taxa_name)
+            # print("1")
             if not pi_slice.empty:
-                #print("2")
+                # print("2")
                 times = complete["Time"].values
                 n_pi = len(pi_slice)
                 times_pi = times[-n_pi:] if n_pi <= len(times) else times
@@ -225,8 +253,8 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_in
                     go.Scatter(
                         x=times_pi,
                         y=lower,
-                        fill='tonexty',
-                        fillcolor='rgba(255,0,0,0.1)',
+                        fill="tonexty",
+                        fillcolor="rgba(255,0,0,0.1)",
                         showlegend=False,
                         visible=visible,
                     ),
@@ -234,15 +262,15 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_in
                     col=1,
                 )
             else:
-                #print("3")
+                # print("3")
                 for _ in range(5):
                     fig.add_trace(go.Scatter(x=[], y=[], visible=False), row=1, col=1)
         print
         if train_size is not None and pred_train is not None and pred_val is not None:
-            #print("5")
+            # print("5")
             idx = parse_target_index(target_col)
-            #print(idx)
-            #print(pred_train)
+            # print(idx)
+            # print(pred_train)
             fig.add_trace(
                 go.Scatter(
                     x=complete["Time"].iloc[:train_size],
@@ -255,11 +283,11 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_in
                 row=1,
                 col=1,
             )
-            #print(pred_val)
-            #print(pred_val[:, idx])
+            # print(pred_val)
+            # print(pred_val[:, idx])
             fig.add_trace(
                 go.Scatter(
-                    x=complete["Time"].iloc[train_size:(val_size+train_size)],
+                    x=complete["Time"].iloc[train_size : (val_size + train_size)],
                     y=pred_val[:, idx],
                     mode="lines",
                     line=dict(color="purple", dash="dot"),
@@ -296,7 +324,9 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_in
             )
 
     if not included_taxa:
-        raise ValueError("No matching taxa columns were found in the complete dataframe.")
+        raise ValueError(
+            "No matching taxa columns were found in the complete dataframe."
+        )
 
     buttons = []
     for idx, (_, taxa_name) in enumerate(included_taxa):
@@ -309,7 +339,10 @@ def plot_taxa_dropdown(complete_csv, dic_taxa_path, anomalies_tsv, prediction_in
             dict(
                 label=taxa_name,
                 method="update",
-                args=[{"visible": button_visibility}, {"title": f"Time series and anomalies for {taxa_name}"}],
+                args=[
+                    {"visible": button_visibility},
+                    {"title": f"Time series and anomalies for {taxa_name}"},
+                ],
             )
         )
 
