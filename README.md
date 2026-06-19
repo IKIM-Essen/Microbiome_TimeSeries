@@ -171,5 +171,5 @@ Please feel free to use the software. If you do so and it results in a scientifi
 
 Dörr, AK., Imangaliyev, S., Karadeniz, U. et al. Distinguishing critical microbial community shifts from normal temporal variability in human and environmental ecosystems. Sci Rep 15, 16934 (2025). doi.org/10.1038/s41598-025-01781-x
 
-Dörr, AK., Schmidt, T., Schoth, J., Kraiselburd, I., Meyer, F. (2026). Which Metadata Matters? Evaluating Predictive Features for Environmental Time Series. 
+Dörr, AK., Schmidt, T., Schoth, J., Kraiselburd, I., Meyer, F. (2026). Which Metadata Matters? Evaluating Predictive Features for Environmental Time Series.
 In: Bruno, P., Calimeri, F., Cauteruccio, F., Dragoni, M., Stella, F., Terracina, G. (eds) Artificial Intelligence for Healthcare, and Hybrid Models for Coupling Deductive and Inductive Reasoning. HC_AIxIA_HYDRA 2025. Communications in Computer and Information Science, vol 2830. Springer, Cham. doi.org/10.1007/978-3-032-16708-8_20
