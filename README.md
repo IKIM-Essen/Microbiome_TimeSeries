@@ -3,14 +3,14 @@
 This repository contains scripts for creating and analyzing machine learning models for the prediction of microbial time series data. The goal is
 to predict changes in microbial communities and forecast trends.
 
-# Testing phase
+## Testing phase
 
 This is the testing ground for the updated model and workflow architecture. If you are testing this, please follow these instructions:
 
 First you have to clone this repository to your machine. The code has been currently only tested on a linux system, so this would definitely be recommended at this point.
 You can either clone the repo with:
 
-    git clone https://github.com/IKIM-Essen/Microbiome_TimeSeries.git
+    git clone "https://github.com/IKIM-Essen/Microbiome_TimeSeries.git"
 
 Or you can directly download the repo as zip file form GitHub and then unpack it.
 
@@ -107,9 +107,9 @@ This will:
 
 ### Run only one stage
 
-```bash
-python scripts/run_pipeline.py --stages preprocess
-```
+    ```bash
+    python scripts/run_pipeline.py --stages preprocess
+    ```
 
 Supported stage names are:
 - `preprocess`
@@ -123,9 +123,9 @@ Supported stage names are:
 
 To inspect the commands without executing them:
 
-```bash
-python scripts/run_pipeline.py --dry-run
-```
+    ```bash
+    python scripts/run_pipeline.py --dry-run
+    ```
 
 ## Script reference
 
@@ -134,38 +134,26 @@ python scripts/run_pipeline.py --dry-run
 Creates the complete input dataframe from `timeseries.tsv`, `metadata.tsv`, and `taxa.tsv`.
 By default it writes to `results/<project.name>/tables/complete_df.csv`, and it can also save split files to `results/<project.name>/intermediate/`.
 
-Example:
-
-```bash
-python scripts/preprocessing.py --timeseries data/timeseries.tsv --metadata data/metadata.tsv --taxa data/taxa.tsv --include_metadata True --output results/<project.name>/tables/complete_df.csv
-```
-
 ### `scripts/training.py`
 
 Loads training/validation splits and fits the current model architecture.
 The current implementation trains a TCN model and an LSTM residual model, and saves them to the project model directory.
 
-Example:
-
-```bash
-python scripts/training.py --splits-input results/<project.name>/intermediate/splits.npz --tcn-path results/<project.name>/models/tcn_model.h5 --lstm-path results/<project.name>/models/lstm_model.h5
-```
-
 ### `scripts/prediction.py`
 
 Loads the trained models and split arrays, then writes prediction arrays to:
 
-```text
-results/<project.name>/intermediate/predictions.npz
-```
+    ```text
+    results/<project.name>/intermediate/predictions.npz
+    ```
 
 ### `scripts/evaluation.py`
 
 Loads prediction outputs and splits to compute evaluation metrics, writing them to:
 
-```text
-results/<project.name>/tables/evaluation_metrics.tsv
-```
+    ```text
+    results/<project.name>/tables/evaluation_metrics.tsv
+    ```
 
 ### `scripts/plot_taxa_violations.py`
 
