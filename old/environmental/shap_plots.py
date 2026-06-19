@@ -18,9 +18,9 @@ plotpath = "Dinslaken/LSTM/"
 
 
 def shap_featureimportance_plots(model, Xtrain, ytrain, Xtest, taxa_dict, columns):
-    shap.explainers._deep.deep_tf.op_handlers["AddV2"] = (
-        shap.explainers._deep.deep_tf.passthrough
-    )
+    shap.explainers._deep.deep_tf.op_handlers[
+        "AddV2"
+    ] = shap.explainers._deep.deep_tf.passthrough
     DE = shap.DeepExplainer(model, Xtrain)  # X_train is 3d numpy.ndarray
     shap_values = DE.shap_values(
         Xtrain, check_additivity=False
@@ -67,9 +67,9 @@ def shap_featureimportance_plots(model, Xtrain, ytrain, Xtest, taxa_dict, column
     plt.savefig(plotpath + "shap_dotplot_wM.png", bbox_inches="tight")
 
     plt.clf()
-    shap.explainers._deep.deep_tf.op_handlers["AddV2"] = (
-        shap.explainers._deep.deep_tf.passthrough
-    )
+    shap.explainers._deep.deep_tf.op_handlers[
+        "AddV2"
+    ] = shap.explainers._deep.deep_tf.passthrough
     print(ytrain.shape)
     Xflatten = model.predict(Xtrain).reshape(ytrain.shape[0], ytrain.shape[1])
     # Xtestflatten = model.predict(Xtest).reshape(-1,38)
