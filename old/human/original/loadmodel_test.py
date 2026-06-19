@@ -26,11 +26,11 @@ import math
 import os
 
 
-import general_functions
-import ml_plots
-import model_confidence
-import shap_plots
-import outlier
+import old.human.original.general_functions as general_functions
+import old.human.original.ml_plots as ml_plots
+import old.human.original.model_confidence as model_confidence
+import old.human.original.shap_plots as shap_plots
+import old.human.original.outlier as outlier
 
 plotpath = "../allGutFemale/"
 

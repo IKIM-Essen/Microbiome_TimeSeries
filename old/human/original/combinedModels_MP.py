@@ -42,11 +42,11 @@ import shap
 
 tf.compat.v1.disable_v2_behavior()
 
-import model_confidence
-import ml_plots
-import shap_plots
-import general_functions
-import outlier
+import old.human.original.model_confidence as model_confidence
+import old.human.original.ml_plots as ml_plots
+import old.human.original.shap_plots as shap_plots
+import old.human.original.general_functions as general_functions
+import old.human.original.outlier as outlier
 
 plotpath = "../allGutFemale/"
 
