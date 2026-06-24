@@ -155,8 +155,7 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_type
 
             return lstm_model
         
-        # elif model_type = "attention":
-            
+        # elif model_type = "attention":       
 
     except Exception as e:
         logger.error("Error during model fitting: %s", str(e), exc_info=True)
