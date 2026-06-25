@@ -9,7 +9,7 @@ import keras
 import tensorflow as tf
 from tensorflow.keras import layers, models
 
-from src.utils.config import load_model_if_path
+from src.utils.config import load_model_if_path, load_config
 
 # Setup logging for model-building and training operations
 ROOT_DIR = os.path.abspath(
@@ -67,14 +67,23 @@ def ensemble_predict(tcn, lstm, X):
 def build_standalone_lstm(input_shape, output_dim, horizon=1):
     inp = layers.Input(shape=input_shape)
     x = layers.LSTM(2048, activation='relu', return_sequences=False)(inp)
-    x = Dropout(0.2)
     out = layers.Dense(output_dim * horizon)(x)
     out = layers.Reshape((horizon, output_dim))(out)
     return models.Model(inputs=inp, outputs=out)
 
 
 # Fit the TCN model first, then train the LSTM on the TCN residuals.
-def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_type):
+def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_architecture=None):
+    # model_architecture can be passed directly; if not provided, read from config
+    if model_architecture is None:
+        CONFIG_PATH = "config/profile.yaml"
+        config = load_config(CONFIG_PATH)
+        model_type = config.get("model_architecture")
+    else:
+        model_type = model_architecture
+    # Ensure model path exists
+    os.makedirs(model_path, exist_ok=True)
+    print("Fitting!")
     try:
         logger.info(
             "Starting model fitting with X_train shape %s, y_train shape %s",
@@ -94,7 +103,9 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_type
             num_targets,
             horizon,
         )
+        print("yes")
         if model_type == "tcn_lstm":
+            print("good")
         # Build models and compile them for regression
             tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
             tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
@@ -132,8 +143,8 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_type
             )
             logger.info("LSTM model training completed")
 
-            tcn_path = model_path+"/tcn.h5"
-            lstm_path = model_path+"/lstm.h5"
+            tcn_path = os.path.join(model_path, "tcn_model.h5")
+            lstm_path = os.path.join(model_path, "lstm_model.h5")
             logger.info("Saving TCN model to %s", tcn_path)
             tcn_model.save(tcn_path)
             logger.info("Saving LSTM model to %s", lstm_path)
@@ -142,18 +153,20 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_type
 
             return tcn_model, lstm_model
         elif model_type == "lstm":
+            print("better")
             lstm = build_standalone_lstm((time_steps, num_features), num_targets, horizon)
             lstm.compile(optimizer="adam", loss="mse", metrics=["mae"])
             logger.info("Models built and compiled successfully")
             es = EarlyStopping(monitor='loss', mode='min', verbose=1, patience=10)
             lstm.fit(X_train, y_train, validation_data=(X_val,y_val), epochs=4, batch_size=5, verbose=0, callbacks = [es])
             logger.info("LSTM model training completed")
-            lstm_path = model_path+"/lstm.h5"
+            lstm_path = os.path.join(model_path, "lstm_model.h5")
+            print(lstm_path)
             logger.info("Saving LSTM model to %s", lstm_path)
-            lstm_model.save(lstm_path)
+            lstm.save(lstm_path)
             logger.info("Model fitting completed successfully")
 
-            return lstm_model
+            return lstm
         
         # elif model_type = "attention":       
 
