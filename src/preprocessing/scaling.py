@@ -31,7 +31,7 @@ def scale_date(complete, scaler_path="results/models/scaler.pkl"):
     scaler = MinMaxScaler(feature_range=(0, 1))
     complete_woT = complete.drop(["Time"], axis=1)
     scaled_data = scaler.fit_transform(complete_woT)
-    dump(scaler, open(str(scaler_path)+"/scaler.pkl", "wb"))
+    dump(scaler, open(str(scaler_path) + "/scaler.pkl", "wb"))
     logger.info("Scaled data shape %s and saved scaler", scaled_data.shape)
     return scaled_data, scaler
 

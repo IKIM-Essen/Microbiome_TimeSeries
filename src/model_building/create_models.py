@@ -66,14 +66,23 @@ def ensemble_predict(tcn, lstm, X):
 # Build a standard regression LSTM model as standalone model
 def build_standalone_lstm(input_shape, output_dim, horizon=1):
     inp = layers.Input(shape=input_shape)
-    x = layers.LSTM(2048, activation='relu', return_sequences=False)(inp)
+    x = layers.LSTM(2048, activation="relu", return_sequences=False)(inp)
     out = layers.Dense(output_dim * horizon)(x)
     out = layers.Reshape((horizon, output_dim))(out)
     return models.Model(inputs=inp, outputs=out)
 
 
 # Fit the TCN model first, then train the LSTM on the TCN residuals.
-def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_architecture=None, save_model=True):
+def fit_model(
+    X_train,
+    y_train,
+    X_val,
+    y_val,
+    n_features,
+    model_path,
+    model_architecture=None,
+    save_model=True,
+):
     # model_architecture can be passed directly; if not provided, read from config
     if model_architecture is None:
         CONFIG_PATH = "config/profile.yaml"
@@ -104,7 +113,7 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
             horizon,
         )
         if model_type == "tcn_lstm":
-        # Build models and compile them for regression
+            # Build models and compile them for regression
             tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
             tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
             lstm_model = build_lstm((time_steps, num_features), num_targets, horizon)
@@ -114,7 +123,11 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
             # --- Train TCN first ---
             logger.info("Starting TCN model training")
             tcn_model.fit(
-                X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val)
+                X_train,
+                y_train,
+                epochs=10,
+                batch_size=32,
+                validation_data=(X_val, y_val),
             )
             logger.info("TCN model training completed")
 
@@ -152,11 +165,21 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
 
             return tcn_model, lstm_model
         elif model_type == "lstm":
-            lstm = build_standalone_lstm((time_steps, num_features), num_targets, horizon)
+            lstm = build_standalone_lstm(
+                (time_steps, num_features), num_targets, horizon
+            )
             lstm.compile(optimizer="adam", loss="mse", metrics=["mae"])
             logger.info("Models built and compiled successfully")
-            es = EarlyStopping(monitor='loss', mode='min', verbose=1, patience=10)
-            lstm.fit(X_train, y_train, validation_data=(X_val,y_val), epochs=4, batch_size=5, verbose=0, callbacks = [es])
+            es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=10)
+            lstm.fit(
+                X_train,
+                y_train,
+                validation_data=(X_val, y_val),
+                epochs=4,
+                batch_size=5,
+                verbose=0,
+                callbacks=[es],
+            )
             logger.info("LSTM model training completed")
             if save_model:
                 lstm_path = os.path.join(model_path, "lstm_model.h5")
@@ -165,8 +188,8 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
             logger.info("Model fitting completed successfully")
 
             return lstm
-        
-        # elif model_type = "attention":       
+
+        # elif model_type = "attention":
 
     except Exception as e:
         logger.error("Error during model fitting: %s", str(e), exc_info=True)

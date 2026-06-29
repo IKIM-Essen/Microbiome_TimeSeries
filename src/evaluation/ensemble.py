@@ -15,6 +15,7 @@ config = load_config(CONFIG_PATH)
 
 mode = config["model_architecture"]
 
+
 def predict_interval(
     number_models,
     Xtrain,
@@ -68,8 +69,7 @@ def predict_interval(
             )
             predictions_val = lstm.predict(Xval)
 
-        #elif mode == "attention":
-
+        # elif mode == "attention":
 
         y_val_tcn = reshape(predictions_val)
 
@@ -140,8 +140,8 @@ def predict_interval(
         # define and fit the model on the training set
         if mode == "tcn_lstm":
             predictions_test = ensemble_predict(tcn_model, lstm_model, Xtest)
-        
-        elif mode =="lstm":
+
+        elif mode == "lstm":
             predictions_test = lstm.predict(Xtest)
 
         y_test_tcn = reshape(predictions_test)

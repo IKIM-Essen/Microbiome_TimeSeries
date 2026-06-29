@@ -19,7 +19,15 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from src.utils.config import load_profile, validate_profile
 
-VALID_REQUESTS = {"preprocess", "train", "predict", "evaluate", "interval", "visualize", "retrain"}
+VALID_REQUESTS = {
+    "preprocess",
+    "train",
+    "predict",
+    "evaluate",
+    "interval",
+    "visualize",
+    "retrain",
+}
 
 
 def _get_project_base(profile):
@@ -174,7 +182,9 @@ def main():
         # Build sensible defaults for interval stage using profile and built paths
         num_models = profile.get("parameters", {}).get("number_ensemble_model", 5)
         base = _get_project_base(profile)
-        tables_dir = os.path.join(base, profile.get("paths", {}).get("tables", "tables"))
+        tables_dir = os.path.join(
+            base, profile.get("paths", {}).get("tables", "tables")
+        )
         interval_output = os.path.join(tables_dir, "prediction_interval.tsv")
         anomalies_output = os.path.join(tables_dir, "prediction_interval_anomalies.tsv")
 
@@ -187,14 +197,15 @@ def main():
             f"--anomalies-output {anomalies_output}"
         )
         run_cmd(cmd, dry_run=args.dry_run)
-        
 
     # Stage: visualize (optional)
     if (requested is None) or ("visualize" in requested):
         # call the taxa violation plot if it exists
         project_base = _get_project_base(profile)
         base = _get_project_base(profile)
-        tables_dir = os.path.join(base, profile.get("paths", {}).get("tables", "tables"))
+        tables_dir = os.path.join(
+            base, profile.get("paths", {}).get("tables", "tables")
+        )
         interval_output = os.path.join(tables_dir, "prediction_interval.tsv")
         anomalies_output = os.path.join(tables_dir, "prediction_interval_anomalies.tsv")
         plot_out = os.path.join(

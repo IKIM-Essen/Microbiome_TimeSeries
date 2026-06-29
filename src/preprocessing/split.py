@@ -26,7 +26,10 @@ if not logger.handlers:
 
 
 def split_data(
-    complete, num_taxa, scaler_path, split_sizes_path="results/intermediate/split_sizes.pkl"
+    complete,
+    num_taxa,
+    scaler_path,
+    split_sizes_path="results/intermediate/split_sizes.pkl",
 ):
     logger.info("Splitting data for %s taxa", num_taxa)
     scaled_data, scaler = scale_date(complete, scaler_path)
