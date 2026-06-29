@@ -81,6 +81,7 @@ def build_paths(profile):
     p["predictions_npz"] = os.path.join(
         base, paths.get("intermediate", "intermediate"), "predictions.npz"
     )
+    p["model_dir"] = os.path.join(base, paths.get("models", "models"))
     p["tcn_model"] = os.path.join(base, paths.get("models", "models"), "tcn_model.h5")
     p["lstm_model"] = os.path.join(base, paths.get("models", "models"), "lstm_model.h5")
     p["evaluation_output"] = os.path.join(
@@ -149,12 +150,19 @@ def main():
 
     # Stage: training
     if (requested is None) or ("train" in requested):
-        cmd = f"python scripts/training.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']}"
+        model_arch = profile.get("model_architecture")
+        model_dir = pp["model_dir"]
+        cmd = f"python scripts/training.py --splits-input {pp['splits_output']} --path {model_dir}"
+        if model_arch:
+            cmd = cmd + f" --model-architecture {model_arch}"
         run_cmd(cmd, dry_run=args.dry_run)
 
     # Stage: prediction
     if (requested is None) or ("predict" in requested):
+        model_arch = profile.get("model_architecture")
         cmd = f"python scripts/prediction.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']} --output {pp['predictions_npz']}"
+        if model_arch:
+            cmd = cmd + f" --model-architecture {model_arch}"
         run_cmd(cmd, dry_run=args.dry_run)
 
     # Stage: evaluation

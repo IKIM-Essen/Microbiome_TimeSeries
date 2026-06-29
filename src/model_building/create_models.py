@@ -161,7 +161,6 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
             lstm.fit(X_train, y_train, validation_data=(X_val,y_val), epochs=4, batch_size=5, verbose=0, callbacks = [es])
             logger.info("LSTM model training completed")
             lstm_path = os.path.join(model_path, "lstm_model.h5")
-            print(lstm_path)
             logger.info("Saving LSTM model to %s", lstm_path)
             lstm.save(lstm_path)
             logger.info("Model fitting completed successfully")

@@ -26,22 +26,50 @@ if not logger.handlers:
 
 
 def predict(
-    X_train, X_val, X_test, tcn_path=None, lstm_path=None, scaler_path=None, output_path=None
+    X_train,
+    X_val,
+    X_test,
+    tcn_path=None,
+    lstm_path=None,
+    scaler_path=None,
+    output_path=None,
+    model_architecture=None,
 ):
     tcn = load_model_if_path(tcn_path)
     lstm = load_model_if_path(lstm_path)
-
-    if tcn is not None and lstm is not None:
+    # If a specific architecture is requested, use that preference.
+    if model_architecture == "tcn_lstm":
+        if tcn is None or lstm is None:
+            raise ValueError("tcn_lstm requested but one of tcn_path or lstm_path is missing")
         pred_train = ensemble_predict(tcn, lstm, X_train)
         pred_val = ensemble_predict(tcn, lstm, X_val)
         pred_test = ensemble_predict(tcn, lstm, X_test)
-
-    elif lstm is not None:
+        print("Built with tcn_lstm")
+    elif model_architecture == "lstm":
+        print("Yes!")
+        if lstm is None:
+            raise ValueError("lstm requested but lstm_path is missing")
         pred_train = lstm.predict(X_train)
         pred_val = lstm.predict(X_val)
         pred_test = lstm.predict(X_test)
+        print("Built with lstm")
+    else:
+        # Fallback: infer based on which models are available
+        if tcn is not None and lstm is not None:
+            pred_train = ensemble_predict(tcn, lstm, X_train)
+            pred_val = ensemble_predict(tcn, lstm, X_val)
+            pred_test = ensemble_predict(tcn, lstm, X_test)
+            print("Built with tcn_lstm")
+        elif lstm is not None:
+            pred_train = lstm.predict(X_train)
+            pred_val = lstm.predict(X_val)
+            pred_test = lstm.predict(X_test)
+            print("Built with lstm")
+        else:
+            raise ValueError("No model found for prediction: provide tcn_path or lstm_path")
 
     if output_path:
+        print("Hurray")
         output_dir = os.path.dirname(output_path)
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)

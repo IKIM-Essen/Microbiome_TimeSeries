@@ -74,7 +74,7 @@ def main():
             X_val.shape,
             y_val.shape,
         )
-
+        
         # Train according to requested model architecture
         fit_model(
             X_train,
