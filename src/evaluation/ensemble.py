@@ -39,7 +39,14 @@ def predict_interval(
         if mode == "tcn_lstm":
             if retraining == False:
                 tcn_model, lstm_model = fit_model(
-                    Xtrain, Ytrain, Xval, Yval, species, tcn_path, lstm_path, str(mode)
+                    Xtrain,
+                    Ytrain,
+                    Xval,
+                    Yval,
+                    species,
+                    tcn_path,
+                    str(mode),
+                    save_model=False,
                 )
 
             elif retraining == True:
@@ -57,6 +64,7 @@ def predict_interval(
                 species,
                 lstm_path,
                 str(mode),
+                save_model=False,
             )
             predictions_val = lstm.predict(Xval)
 

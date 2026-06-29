@@ -84,6 +84,7 @@ def main():
             X_train.shape[2],
             args.path,
             model_architecture=args.model_architecture,
+            save_model=True,
         )
         logger.info("Model training completed successfully")
     except FileNotFoundError as e:

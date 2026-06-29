@@ -73,7 +73,7 @@ def build_standalone_lstm(input_shape, output_dim, horizon=1):
 
 
 # Fit the TCN model first, then train the LSTM on the TCN residuals.
-def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_architecture=None):
+def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_architecture=None, save_model=True):
     # model_architecture can be passed directly; if not provided, read from config
     if model_architecture is None:
         CONFIG_PATH = "config/profile.yaml"
@@ -81,8 +81,9 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
         model_type = config.get("model_architecture")
     else:
         model_type = model_architecture
-    # Ensure model path exists
-    os.makedirs(model_path, exist_ok=True)
+    # Ensure model path exists only if saving trained models
+    if save_model:
+        os.makedirs(model_path, exist_ok=True)
     print("Fitting!")
     try:
         logger.info(
@@ -143,12 +144,13 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
             )
             logger.info("LSTM model training completed")
 
-            tcn_path = os.path.join(model_path, "tcn_model.h5")
-            lstm_path = os.path.join(model_path, "lstm_model.h5")
-            logger.info("Saving TCN model to %s", tcn_path)
-            tcn_model.save(tcn_path)
-            logger.info("Saving LSTM model to %s", lstm_path)
-            lstm_model.save(lstm_path)
+            if save_model:
+                tcn_path = os.path.join(model_path, "tcn_model.h5")
+                lstm_path = os.path.join(model_path, "lstm_model.h5")
+                logger.info("Saving TCN model to %s", tcn_path)
+                tcn_model.save(tcn_path)
+                logger.info("Saving LSTM model to %s", lstm_path)
+                lstm_model.save(lstm_path)
             logger.info("Model fitting completed successfully")
 
             return tcn_model, lstm_model
@@ -160,9 +162,10 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
             es = EarlyStopping(monitor='loss', mode='min', verbose=1, patience=10)
             lstm.fit(X_train, y_train, validation_data=(X_val,y_val), epochs=4, batch_size=5, verbose=0, callbacks = [es])
             logger.info("LSTM model training completed")
-            lstm_path = os.path.join(model_path, "lstm_model.h5")
-            logger.info("Saving LSTM model to %s", lstm_path)
-            lstm.save(lstm_path)
+            if save_model:
+                lstm_path = os.path.join(model_path, "lstm_model.h5")
+                logger.info("Saving LSTM model to %s", lstm_path)
+                lstm.save(lstm_path)
             logger.info("Model fitting completed successfully")
 
             return lstm
