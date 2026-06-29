@@ -49,7 +49,6 @@ def retrain_model(
         timeseries, taxalist, exo
     )
     new_timeseries.sort_values(by=["Time"], inplace=True, ignore_index=True)
-    print(new_timeseries)
 
     with open("results/intermediate/dic_TargTax.pkl", "wb") as mapping_file:
         pickle.dump(new_taxa, mapping_file)

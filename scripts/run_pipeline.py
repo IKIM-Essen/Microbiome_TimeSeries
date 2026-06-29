@@ -193,6 +193,10 @@ def main():
     if (requested is None) or ("visualize" in requested):
         # call the taxa violation plot if it exists
         project_base = _get_project_base(profile)
+        base = _get_project_base(profile)
+        tables_dir = os.path.join(base, profile.get("paths", {}).get("tables", "tables"))
+        interval_output = os.path.join(tables_dir, "prediction_interval.tsv")
+        anomalies_output = os.path.join(tables_dir, "prediction_interval_anomalies.tsv")
         plot_out = os.path.join(
             project_base,
             profile.get("paths", {}).get("figures", "figures"),
@@ -205,7 +209,7 @@ def main():
         )
         cmd = (
             f"python scripts/plot_taxa_anomalies.py --prediction-interval {prediction_interval_path} "
-            f"--predictions {pp['predictions_npz']} --split-sizes {pp['split_sizes']} --anomalies --prediction-interval --output {plot_out}"
+            f"--predictions {pp['predictions_npz']} --split-sizes {pp['split_sizes']} --anomalies {anomalies_output} --prediction-interval {interval_output} --output {plot_out}"
         )
         run_cmd(cmd, dry_run=args.dry_run)
 

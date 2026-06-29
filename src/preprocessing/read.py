@@ -260,9 +260,7 @@ def create_complete_df(
     dic_TargTax = {}
     for i in range(len(tax.values)):
         complete[f"Target{i+1}"] = tax.iloc[i].values
-        # print(tax.index[i])
         dic_TargTax[f"Target{i+1}"] = tax.index[i]
-        # print(i)
     # Add metadata features to the complete dataframe if include_metadata is True
     if include_metadata:
         for col in metadata_woT.columns:
@@ -271,6 +269,5 @@ def create_complete_df(
     complete.sort_values(by=["Time"], inplace=True, ignore_index=True)
     complete.fillna(0, axis=1, inplace=True)
     complete.to_csv(output)
-    print(metadata_woT)
     metadata_woT.sort_values(by=["Time"], inplace=True, ignore_index=True)
     return complete, metadata_woT, number_taxa, dic_TargTax

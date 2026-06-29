@@ -44,32 +44,26 @@ def predict(
         pred_train = ensemble_predict(tcn, lstm, X_train)
         pred_val = ensemble_predict(tcn, lstm, X_val)
         pred_test = ensemble_predict(tcn, lstm, X_test)
-        print("Built with tcn_lstm")
     elif model_architecture == "lstm":
-        print("Yes!")
         if lstm is None:
             raise ValueError("lstm requested but lstm_path is missing")
         pred_train = lstm.predict(X_train)
         pred_val = lstm.predict(X_val)
         pred_test = lstm.predict(X_test)
-        print("Built with lstm")
     else:
         # Fallback: infer based on which models are available
         if tcn is not None and lstm is not None:
             pred_train = ensemble_predict(tcn, lstm, X_train)
             pred_val = ensemble_predict(tcn, lstm, X_val)
             pred_test = ensemble_predict(tcn, lstm, X_test)
-            print("Built with tcn_lstm")
         elif lstm is not None:
             pred_train = lstm.predict(X_train)
             pred_val = lstm.predict(X_val)
             pred_test = lstm.predict(X_test)
-            print("Built with lstm")
         else:
             raise ValueError("No model found for prediction: provide tcn_path or lstm_path")
 
     if output_path:
-        print("Hurray")
         output_dir = os.path.dirname(output_path)
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)

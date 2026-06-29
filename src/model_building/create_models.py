@@ -84,7 +84,6 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
     # Ensure model path exists only if saving trained models
     if save_model:
         os.makedirs(model_path, exist_ok=True)
-    print("Fitting!")
     try:
         logger.info(
             "Starting model fitting with X_train shape %s, y_train shape %s",
@@ -104,9 +103,7 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
             num_targets,
             horizon,
         )
-        print("yes")
         if model_type == "tcn_lstm":
-            print("good")
         # Build models and compile them for regression
             tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
             tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
@@ -155,7 +152,6 @@ def fit_model(X_train, y_train, X_val, y_val, n_features, model_path, model_arch
 
             return tcn_model, lstm_model
         elif model_type == "lstm":
-            print("better")
             lstm = build_standalone_lstm((time_steps, num_features), num_targets, horizon)
             lstm.compile(optimizer="adam", loss="mse", metrics=["mae"])
             logger.info("Models built and compiled successfully")

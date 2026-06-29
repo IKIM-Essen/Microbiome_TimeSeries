@@ -98,7 +98,6 @@ def predict_interval(
     # -- In case of standard deviation use ---
     mse = np.mean(residuals**2, axis=0)
     var_residual = mse
-    print(residuals.shape)
 
     # -- In case of non-distributional use --
     # For asymmetric intervals compute quantiles of residuals:
@@ -110,8 +109,6 @@ def predict_interval(
     lower_width = np.abs(q_low)
     upper_width = np.abs(q_high)
 
-    print(q_low)
-    print(q_high)
     """ Test for normality in case of normality assumption
     # 1. Shapiro-Wilk test
     feature_results = {}
@@ -134,13 +131,11 @@ def predict_interval(
     print(f" - {num_normal} look Gaussian (p > 0.05)")
     print(f" - {num_non_normal} do NOT look Gaussian (p <= 0.05)")
     
-    #print(var_residual.shape)
     z = norm.ppf(0.975)
 
     total_variance = feature_variance + var_residual
     std_total = np.sqrt(total_variance)
     """
-    print("ensemble model shape")
     for i in range(number_models):
         # define and fit the model on the training set
         if mode == "tcn_lstm":
@@ -167,7 +162,6 @@ def predict_interval(
     while i < len(species):
         list_error = []
         list_lower = [np.nan] * Xtrain.shape[1]
-        # print(len(list_lower)) =27
         list_upper = [np.nan] * Xtrain.shape[1]
         list_mean = [np.nan] * Xtrain.shape[1]
         y = 0

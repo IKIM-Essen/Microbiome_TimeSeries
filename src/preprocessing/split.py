@@ -34,7 +34,6 @@ def split_data(
         not col.startswith("Target") and not col.startswith("Time")
         for col in complete.columns
     )
-    print(count)
     X = scaled_data.reshape(
         scaled_data.shape[0], scaled_data.shape[1]
     )  # Reshape for LSTM input
@@ -79,7 +78,6 @@ def split_without_scaling(
         not col.startswith("Target") and not col.startswith("Time")
         for col in scaled_data.columns
     )
-    print(count)
     X = scaled_data.reshape(
         scaled_data.shape[0], scaled_data.shape[1]
     )  # Reshape for LSTM input

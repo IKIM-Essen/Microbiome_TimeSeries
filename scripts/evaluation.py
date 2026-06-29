@@ -51,7 +51,6 @@ def main():
 
     logger.info("Loading prediction results from %s", args.prediction_results)
     predictions = np.load(args.prediction_results)
-    print(predictions["pred_train"].shape)
     y_pred_train = predictions["pred_train"]
     y_pred_val = predictions["pred_val"]
     y_pred_test = predictions["pred_test"]
