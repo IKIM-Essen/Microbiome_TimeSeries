@@ -70,6 +70,12 @@ def main():
         help="Path to save the split numpy batches.",
     )
     parser.add_argument(
+        "--scaler-path",
+        type=str,
+        default="results/models/scaler.pkl",
+        help="Path to save the scaler.",
+    )
+    parser.add_argument(
         "--splits-sizes",
         type=str,
         default="results/intermediate/split_sizes.pkl",
@@ -91,6 +97,7 @@ def main():
         X_train, y_train, X_val, y_val, X_test, y_test = split_data(
             complete_df,
             number_taxa,
+            args.scaler_path,
             args.splits_sizes,
         )
         os.makedirs(os.path.dirname(args.splits_output), exist_ok=True)

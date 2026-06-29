@@ -24,10 +24,9 @@ parameters:
   include_metadata: True
   number_ensemble_model: 50
 
-model_architecture:
-  tcn_lstm_residuals: True
-  attention: False
-  lstm: False
+
+# Valid variants are: tcn_lstm, attention, lstm
+model_architecture: tcn_lstm
 
 # ===============================
 # Folder names for the output, change if you want, but the default makes quite sense, trust me.

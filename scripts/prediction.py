@@ -45,6 +45,12 @@ def main():
         help="Path to the saved LSTM model file.",
     )
     parser.add_argument(
+        "--model-architecture",
+        type=str,
+        default=None,
+        help="Model architecture used for prediction (tcn_lstm, lstm, attention). If omitted, reads config/profile.yaml",
+    )
+    parser.add_argument(
         "--scaler-path",
         type=str,
         default="results/models/scaler.pkl",
@@ -80,6 +86,7 @@ def main():
         args.lstm_path,
         args.scaler_path,
         args.output,
+        model_architecture=args.model_architecture,
     )
 
     logger.info(

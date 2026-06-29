@@ -41,16 +41,16 @@ def main():
             help="Path to the saved split numpy batches.",
         )
         parser.add_argument(
-            "--tcn-path",
+            "--path",
             type=str,
-            default="results/models/tcn_model.h5",
-            help="Path to save the trained TCN model.",
+            default="results/models/",
+            help="Path to save the trained model.",
         )
         parser.add_argument(
-            "--lstm-path",
+            "--model-architecture",
             type=str,
-            default="results/models/lstm_model.h5",
-            help="Path to save the trained LSTM model.",
+            default=None,
+            help="Model architecture to train (tcn_lstm, lstm, attention). If omitted, will read from config/profile.yaml",
         )
 
         args = parser.parse_args()
@@ -75,15 +75,16 @@ def main():
             y_val.shape,
         )
 
-        # Train the TCN model and then fit the residual LSTM on TCN errors
+        # Train according to requested model architecture
         fit_model(
             X_train,
             y_train,
             X_val,
             y_val,
             X_train.shape[2],
-            args.tcn_path,
-            args.lstm_path,
+            args.path,
+            model_architecture=args.model_architecture,
+            save_model=True,
         )
         logger.info("Model training completed successfully")
     except FileNotFoundError as e:

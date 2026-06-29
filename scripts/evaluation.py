@@ -55,6 +55,9 @@ def main():
     y_pred_val = predictions["pred_val"]
     y_pred_test = predictions["pred_test"]
 
+    y_pred_train = np.squeeze(y_pred_train, axis=1)
+    y_pred_test = np.squeeze(y_pred_test, axis=1)
+
     actual = np.load(args.splits)
     y_train = actual["y_train"]
     y_val = actual["y_val"]

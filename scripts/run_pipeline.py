@@ -19,7 +19,15 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from src.utils.config import load_profile, validate_profile
 
-VALID_REQUESTS = {"preprocess", "train", "predict", "evaluate", "visualize", "retrain"}
+VALID_REQUESTS = {
+    "preprocess",
+    "train",
+    "predict",
+    "evaluate",
+    "interval",
+    "visualize",
+    "retrain",
+}
 
 
 def _get_project_base(profile):
@@ -81,6 +89,7 @@ def build_paths(profile):
     p["predictions_npz"] = os.path.join(
         base, paths.get("intermediate", "intermediate"), "predictions.npz"
     )
+    p["model_dir"] = os.path.join(base, paths.get("models", "models"))
     p["tcn_model"] = os.path.join(base, paths.get("models", "models"), "tcn_model.h5")
     p["lstm_model"] = os.path.join(base, paths.get("models", "models"), "lstm_model.h5")
     p["evaluation_output"] = os.path.join(
@@ -101,7 +110,7 @@ def main():
         "--stages",
         type=str,
         default=None,
-        help="Comma-separated stages to run (preprocess,train,predict,evaluate,visualize)",
+        help="Comma-separated stages to run (preprocess,train,predict,evaluate,interval,visualize)",
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Print commands without executing"
@@ -142,19 +151,26 @@ def main():
         cmd = (
             f"python scripts/preprocessing.py --timeseries {pp['timeseries']} --metadata {pp['metadata']} "
             f"--taxa {pp['taxa']} --include-metadata {str(profile.get('parameters', {}).get('include_metadata', False))} "
-            f"--output {pp['complete_csv']} --mapping-output {pp['mapping_output']} --splits-output {pp['splits_output']} --splits-sizes {pp['split_sizes']}"
+            f"--output {pp['complete_csv']} --mapping-output {pp['mapping_output']} --splits-output {pp['splits_output']} --scaler-path {pp['model_dir']} --splits-sizes {pp['split_sizes']}"
         )
         run_cmd(cmd, dry_run=args.dry_run)
         print(cmd)
 
     # Stage: training
     if (requested is None) or ("train" in requested):
-        cmd = f"python scripts/training.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']}"
+        model_arch = profile.get("model_architecture")
+        model_dir = pp["model_dir"]
+        cmd = f"python scripts/training.py --splits-input {pp['splits_output']} --path {model_dir}"
+        if model_arch:
+            cmd = cmd + f" --model-architecture {model_arch}"
         run_cmd(cmd, dry_run=args.dry_run)
 
     # Stage: prediction
     if (requested is None) or ("predict" in requested):
+        model_arch = profile.get("model_architecture")
         cmd = f"python scripts/prediction.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']} --output {pp['predictions_npz']}"
+        if model_arch:
+            cmd = cmd + f" --model-architecture {model_arch}"
         run_cmd(cmd, dry_run=args.dry_run)
 
     # Stage: evaluation
@@ -162,10 +178,36 @@ def main():
         cmd = f"python scripts/evaluation.py --prediction-results {pp['predictions_npz']} --splits {pp['splits_output']} --output {pp['evaluation_output']}"
         run_cmd(cmd, dry_run=args.dry_run)
 
+    if (requested is None) or ("interval" in requested):
+        # Build sensible defaults for interval stage using profile and built paths
+        num_models = profile.get("parameters", {}).get("number_ensemble_model", 5)
+        base = _get_project_base(profile)
+        tables_dir = os.path.join(
+            base, profile.get("paths", {}).get("tables", "tables")
+        )
+        interval_output = os.path.join(tables_dir, "prediction_interval.tsv")
+        anomalies_output = os.path.join(tables_dir, "prediction_interval_anomalies.tsv")
+
+        scaler_path = os.path.join(pp["model_dir"], "scaler.pkl")
+
+        cmd = (
+            f"python scripts/interval.py --num-models {num_models} --splits-input {pp['splits_output']} "
+            f"--scaler {scaler_path} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']} "
+            f"--output {interval_output} --complete-input {pp['complete_csv']} --dic-taxa {pp['mapping_output']} "
+            f"--anomalies-output {anomalies_output}"
+        )
+        run_cmd(cmd, dry_run=args.dry_run)
+
     # Stage: visualize (optional)
     if (requested is None) or ("visualize" in requested):
         # call the taxa violation plot if it exists
         project_base = _get_project_base(profile)
+        base = _get_project_base(profile)
+        tables_dir = os.path.join(
+            base, profile.get("paths", {}).get("tables", "tables")
+        )
+        interval_output = os.path.join(tables_dir, "prediction_interval.tsv")
+        anomalies_output = os.path.join(tables_dir, "prediction_interval_anomalies.tsv")
         plot_out = os.path.join(
             project_base,
             profile.get("paths", {}).get("figures", "figures"),
@@ -178,7 +220,7 @@ def main():
         )
         cmd = (
             f"python scripts/plot_taxa_anomalies.py --prediction-interval {prediction_interval_path} "
-            f"--predictions {pp['predictions_npz']} --split-sizes {pp['split_sizes']} --output {plot_out}"
+            f"--predictions {pp['predictions_npz']} --split-sizes {pp['split_sizes']} --anomalies {anomalies_output} --prediction-interval {interval_output} --output {plot_out}"
         )
         run_cmd(cmd, dry_run=args.dry_run)
 

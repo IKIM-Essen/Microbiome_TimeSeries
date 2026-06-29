@@ -26,15 +26,17 @@ if not logger.handlers:
 
 
 def split_data(
-    complete, num_taxa, split_sizes_path="results/intermediate/split_sizes.pkl"
+    complete,
+    num_taxa,
+    scaler_path,
+    split_sizes_path="results/intermediate/split_sizes.pkl",
 ):
     logger.info("Splitting data for %s taxa", num_taxa)
-    scaled_data, scaler = scale_date(complete)
+    scaled_data, scaler = scale_date(complete, scaler_path)
     count = sum(
         not col.startswith("Target") and not col.startswith("Time")
         for col in complete.columns
     )
-    print(count)
     X = scaled_data.reshape(
         scaled_data.shape[0], scaled_data.shape[1]
     )  # Reshape for LSTM input
@@ -79,7 +81,6 @@ def split_without_scaling(
         not col.startswith("Target") and not col.startswith("Time")
         for col in scaled_data.columns
     )
-    print(count)
     X = scaled_data.reshape(
         scaled_data.shape[0], scaled_data.shape[1]
     )  # Reshape for LSTM input
