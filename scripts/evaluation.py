@@ -51,9 +51,13 @@ def main():
 
     logger.info("Loading prediction results from %s", args.prediction_results)
     predictions = np.load(args.prediction_results)
+    print(predictions["pred_train"].shape)
     y_pred_train = predictions["pred_train"]
     y_pred_val = predictions["pred_val"]
     y_pred_test = predictions["pred_test"]
+
+    y_pred_train = np.squeeze(y_pred_train, axis=1)
+    y_pred_test = np.squeeze(y_pred_test, axis=1)
 
     actual = np.load(args.splits)
     y_train = actual["y_train"]
