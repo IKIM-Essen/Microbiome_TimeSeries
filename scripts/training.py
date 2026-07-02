@@ -56,36 +56,69 @@ def main():
         args = parser.parse_args()
         logger.info("Starting model training with splits from %s", args.splits_input)
 
-        # Load preprocessed training and validation splits from the saved npz file
-        splits = np.load(args.splits_input)
-        X_train = splits["X_train"]
-        y_train = splits["y_train"]
-        X_val = splits["X_val"]
-        y_val = splits["y_val"]
-
-        print(f"Loaded split batches from {args.splits_input}")
-        print(f"X_train={X_train.shape}, y_train={y_train.shape}")
-        print(f"X_val={X_val.shape}, y_val={y_val.shape}")
-        logger.info("Loaded split batches from %s", args.splits_input)
-        logger.info(
-            "X_train=%s, y_train=%s, X_val=%s, y_val=%s",
-            X_train.shape,
-            y_train.shape,
-            X_val.shape,
-            y_val.shape,
-        )
-
         # Train according to requested model architecture
-        fit_model(
-            X_train,
-            y_train,
-            X_val,
-            y_val,
-            X_train.shape[2],
-            args.path,
-            model_architecture=args.model_architecture,
-            save_model=True,
-        )
+        if args.model_architecture is not "attention":
+            # Load preprocessed training and validation splits from the saved npz file
+            splits = np.load(args.splits_input)
+            X_train = splits["X_train"]
+            y_train = splits["y_train"]
+            X_val = splits["X_val"]
+            y_val = splits["y_val"]
+
+            print(f"Loaded split batches from {args.splits_input}")
+            print(f"X_train={X_train.shape}, y_train={y_train.shape}")
+            print(f"X_val={X_val.shape}, y_val={y_val.shape}")
+            logger.info("Loaded split batches from %s", args.splits_input)
+            logger.info(
+                "X_train=%s, y_train=%s, X_val=%s, y_val=%s",
+                X_train.shape,
+                y_train.shape,
+                X_val.shape,
+                y_val.shape,
+            )
+            fit_model(
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                X_train.shape[2],
+                args.path,
+                model_architecture=args.model_architecture,
+                save_model=True,
+            )
+        elif args.model_architecture is "attention":
+            splits = np.load(args.splits_input)
+            X_train = splits["X_bact_train"]
+            y_train = splits["y_train"]
+            X_val = splits["X_bact_val"]
+            y_val = splits["y_val"]
+            X_meta_train = splits["X_meta_train"]
+            X_meta_val = splits["X_meta_val"]
+
+
+            print(f"Loaded split batches from {args.splits_input}")
+            print(f"X_train={X_train.shape}, y_train={y_train.shape}")
+            print(f"X_val={X_val.shape}, y_val={y_val.shape}")
+            logger.info("Loaded split batches from %s", args.splits_input)
+            logger.info(
+                "X_train=%s, y_train=%s, X_val=%s, y_val=%s",
+                X_train.shape,
+                y_train.shape,
+                X_val.shape,
+                y_val.shape,
+            )
+            fit_model(
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                X_train.shape[2],
+                args.path,
+                model_architecture=args.model_architecture,
+                save_model=True,
+                X_meta_train,
+                X_meta_val,
+            )
         logger.info("Model training completed successfully")
     except FileNotFoundError as e:
         logger.error("File not found error: %s", str(e), exc_info=True)

@@ -151,7 +151,8 @@ def main():
         cmd = (
             f"python scripts/preprocessing.py --timeseries {pp['timeseries']} --metadata {pp['metadata']} "
             f"--taxa {pp['taxa']} --include-metadata {str(profile.get('parameters', {}).get('include_metadata', False))} "
-            f"--output {pp['complete_csv']} --mapping-output {pp['mapping_output']} --splits-output {pp['splits_output']} --scaler-path {pp['model_dir']} --splits-sizes {pp['split_sizes']}"
+            f"--output {pp['complete_csv']} --mapping-output {pp['mapping_output']} --splits-output {pp['splits_output']} "
+            f"--scaler-path {pp['model_dir']} --splits-sizes {pp['split_sizes']} "
         )
         run_cmd(cmd, dry_run=args.dry_run)
         print(cmd)

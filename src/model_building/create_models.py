@@ -72,6 +72,126 @@ def build_standalone_lstm(input_shape, output_dim, horizon=1):
     return models.Model(inputs=inp, outputs=out)
 
 
+def TCNBlock(input_layer, filters=64, kernel_size=3, num_layers=4, dropout=0.2):
+    x = input_layer
+    for i in range(num_layers):
+        dilation = 2 ** i
+        x = layers.Conv1D(
+            filters,
+            kernel_size,
+            dilation_rate=dilation,
+            padding="causal",
+            activation="relu"
+        )(x)
+        x = layers.Dropout(dropout)(x)
+    return x
+
+
+def build_attention(
+        bact_shape,
+        meta_shape,
+        output_dim,
+        horizon=3):
+
+    # ----- Inputs -----
+    bact_input = layers.Input(shape=bact_shape, name="bacterial_input")
+    meta_input = layers.Input(shape=meta_shape, name="metadata_input")
+
+    # ===============================
+    # Bacterial TCN branch
+    # ===============================
+    tcn = TCNBlock(
+        bact_input,
+        filters=128,
+        kernel_size=3,
+        num_layers=4,
+        dropout=0.2
+    )
+
+    tcn = layers.GlobalAveragePooling1D()(tcn)
+
+    # ===============================
+    # Bacterial LSTM + attention
+    # ===============================
+    lstm_seq = layers.LSTM(
+        128,
+        return_sequences=True,
+        name="bact_lstm"
+    )(bact_input)
+
+    attn = layers.MultiHeadAttention(
+        num_heads=4,
+        key_dim=32,
+        name="temporal_attention"
+    )(lstm_seq, lstm_seq)
+
+    attn = layers.GlobalAveragePooling1D()(attn)
+
+    # combine bacterial representations
+    bact_embed = layers.Concatenate(name="bact_concat")([tcn, attn])
+
+    # ===============================
+    # Metadata LSTM branch
+    # ===============================
+    meta_seq = layers.LSTM(
+        64,
+        return_sequences=True,
+        name="meta_lstm"
+    )(meta_input)
+
+    meta_embed = layers.GlobalAveragePooling1D()(meta_seq)
+
+    # ===============================
+    # Branch gating
+    # ===============================
+    gate_input = layers.Concatenate()([bact_embed, meta_embed])
+
+    gate = layers.Dense(
+        2,
+        activation="softmax",
+        name="branch_gate"
+    )(gate_input)
+
+    gate_bact = layers.Lambda(lambda x: x[:,0:1])(gate)
+    gate_meta = layers.Lambda(lambda x: x[:,1:2])(gate)
+
+    bact_weighted = layers.Multiply()([bact_embed, gate_bact])
+    meta_weighted = layers.Multiply()([meta_embed, gate_meta])
+
+    combined = layers.Concatenate(name="final_concat")(
+        [bact_weighted, meta_weighted]
+    )
+
+    # ===============================
+    # Prediction head
+    # ===============================
+    x = layers.Dense(256, activation="relu")(combined)
+    x = layers.Dropout(0.3)(x)
+
+    x = layers.Dense(128, activation="relu")(x)
+
+    out = layers.Dense(output_dim * horizon)(x)
+    out = layers.Reshape((horizon, output_dim))(out)
+
+    model = models.Model(
+        inputs=[bact_input, meta_input],
+        outputs=out,
+        name="Microbiome_TCN_LSTM_Attention_Gated"
+    )
+
+
+    model.compile(
+        optimizer="adam",
+        loss="mse",
+        metrics=["mae"]
+    )
+
+    #bact_input.save_weights("BigTimeseriesMetadata/bacterial_input_pretrained.h5")
+
+    return model
+
+
+
 # Fit the TCN model first, then train the LSTM on the TCN residuals.
 def fit_model(
     X_train,
@@ -82,6 +202,8 @@ def fit_model(
     model_path,
     model_architecture=None,
     save_model=True,
+    X_meta_train=None,
+    X_meta_val=None,
 ):
     # model_architecture can be passed directly; if not provided, read from config
     if model_architecture is None:
@@ -189,7 +311,25 @@ def fit_model(
 
             return lstm
 
-        # elif model_type = "attention":
+        elif model_type == "attention":
+            attention = build_attention(
+                bact_shape=(X_train.shape[1], X_train.shape[2]),
+                meta_shape=(X_meta_train.shape[1], X_meta_train.shape[2]),
+                output_dim=y_train.shape[1],
+                horizon,
+            )
+            attention.summary()
+
+            attention.fit(
+                [X_train, X_meta_train],
+                y_train,
+                validation_data=([X_val, X_meta_val], y_val),
+                epochs=100,
+                batch_size=32,
+                callbacks=[es]
+            )
+            
+            return attention
 
     except Exception as e:
         logger.error("Error during model fitting: %s", str(e), exc_info=True)
