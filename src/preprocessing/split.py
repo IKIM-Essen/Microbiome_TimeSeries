@@ -29,6 +29,8 @@ def split_data(
     complete,
     num_taxa,
     scaler_path,
+    train_percentage,
+    val_percentage,
     split_sizes_path="results/intermediate/split_sizes.pkl",
 ):
     logger.info("Splitting data for %s taxa", num_taxa)
@@ -42,8 +44,8 @@ def split_data(
     )  # Reshape for LSTM input
     y = scaled_data[:, 0 : num_taxa + count]
     # Split the data into training and testing sets
-    train_size = int(len(X) * 0.7)
-    val_size = int(len(X) * 0.8)
+    train_size = int(len(X) * train_percentage)
+    val_size = int(len(X) * (train_percentage + val_percentage))
     X_train, X_val, X_test = X[0:train_size], X[train_size:val_size], X[val_size:]
     y_train, y_val, y_test = y[0:train_size], y[train_size:val_size], y[val_size:]
     X_train = X_train.reshape(X_train.shape[0], 1, X_train.shape[1])
@@ -110,3 +112,50 @@ def split_without_scaling(
     logger.info("Saved split sizes to %s", split_sizes_path)
 
     return X_train, y_train, X_val, y_val, X_test, y_test
+
+def split_indices(n_samples, train_percentage=0.7, val_percentage=0.1):
+    train_end = int(n_samples * train_percentage)
+    val_end = int(n_samples * (train_percentage + val_percentage))
+    
+    idx_train = np.arange(0, train_end)
+    idx_val   = np.arange(train_end, val_end)
+    idx_test  = np.arange(val_end, n_samples)
+    
+    return idx_train, idx_val, idx_test
+
+def split_data_attention(complete, num_taxa, scaler_path, metadata_woT, train_percentage, val_percentage):
+    logger.info("Splitting data for %s taxa", num_taxa)
+    scaled_data, scaler = scale_date(complete, scaler_path)
+    X_bact = scaled_data[:, num_taxa:(num_taxa + lag_targets)]
+    X_bact = X_bact.reshape(X_bact.shape[0], 1, X_bact.shape[1])
+
+    # Convert metadata to numpy and reshape for time dimension
+    X_meta = np.array(metadata_woT, dtype=np.float32)
+    X_meta = X_meta.reshape(X_meta.shape[0], 1, X_meta.shape[1])
+
+    # Ensure bacterial data is numeric
+    X_bact = scaled_data[:, num_taxa:(num_taxa + lag_targets)]
+    X_bact = X_bact.reshape(X_bact.shape[0], 1, X_bact.shape[1])
+
+    # Ensure target is numeric
+    y = scaled_data[:, 0:num_taxa]
+
+    # Generate indices
+    idx_train, idx_val, idx_test = split_indices(len(X_bact), train_percentage, val_percentage)
+
+    # Split bacterial data
+    X_bact_train = X_bact[idx_train]
+    X_bact_val   = X_bact[idx_val]
+    X_bact_test  = X_bact[idx_test]
+
+    # Split metadata
+    X_meta_train = X_meta[idx_train]
+    X_meta_val   = X_meta[idx_val]
+    X_meta_test  = X_meta[idx_test]
+
+    # Split targets
+    y_train = y[idx_train]
+    y_val   = y[idx_val]
+    y_test  = y[idx_test]
+
+    return X_bact_train, y_train, X_bact_val, y_val, X_bact_test, y_test, X_meta_train, X_meta_val, X_meta_test
