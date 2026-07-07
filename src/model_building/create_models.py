@@ -316,7 +316,7 @@ def fit_model(
                 bact_shape=(X_train.shape[1], X_train.shape[2]),
                 meta_shape=(X_meta_train.shape[1], X_meta_train.shape[2]),
                 output_dim=y_train.shape[1],
-                horizon,
+                horizon=horizon,
             )
             attention.summary()
 

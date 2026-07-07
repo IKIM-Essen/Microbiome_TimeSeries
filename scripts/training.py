@@ -57,7 +57,7 @@ def main():
         logger.info("Starting model training with splits from %s", args.splits_input)
 
         # Train according to requested model architecture
-        if args.model_architecture is not "attention":
+        if args.model_architecture != "attention":
             # Load preprocessed training and validation splits from the saved npz file
             splits = np.load(args.splits_input)
             X_train = splits["X_train"]
@@ -86,7 +86,7 @@ def main():
                 model_architecture=args.model_architecture,
                 save_model=True,
             )
-        elif args.model_architecture is "attention":
+        elif args.model_architecture == "attention":
             splits = np.load(args.splits_input)
             X_train = splits["X_bact_train"]
             y_train = splits["y_train"]
@@ -100,13 +100,13 @@ def main():
             print(f"X_train={X_train.shape}, y_train={y_train.shape}")
             print(f"X_val={X_val.shape}, y_val={y_val.shape}")
             logger.info("Loaded split batches from %s", args.splits_input)
-            logger.info(
-                "X_train=%s, y_train=%s, X_val=%s, y_val=%s",
-                X_train.shape,
-                y_train.shape,
-                X_val.shape,
-                y_val.shape,
-            )
+            #logger.info(
+            #    "X_train=%s, y_train=%s, X_val=%s, y_val=%s",
+            #    X_train.shape,
+            #    y_train.shape,
+            #    X_val.shape,
+            #    y_val.shape,
+            #)
             fit_model(
                 X_train,
                 y_train,
@@ -116,8 +116,8 @@ def main():
                 args.path,
                 model_architecture=args.model_architecture,
                 save_model=True,
-                X_meta_train,
-                X_meta_val,
+                X_meta_train=X_meta_train,
+                X_meta_val=X_meta_val,
             )
         logger.info("Model training completed successfully")
     except FileNotFoundError as e:
