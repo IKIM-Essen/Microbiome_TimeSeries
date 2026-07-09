@@ -88,6 +88,7 @@ def main():
             )
         elif args.model_architecture == "attention":
             splits = np.load(args.splits_input)
+            print(splits.files)
             X_train = splits["X_bact_train"]
             y_train = splits["y_train"]
             X_val = splits["X_bact_val"]

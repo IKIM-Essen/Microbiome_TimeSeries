@@ -319,7 +319,7 @@ def fit_model(
                 horizon=horizon,
             )
             attention.summary()
-
+            es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=10)
             attention.fit(
                 [X_train, X_meta_train],
                 y_train,

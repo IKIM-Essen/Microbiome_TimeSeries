@@ -124,7 +124,10 @@ def split_indices(n_samples, train_percentage=0.7, val_percentage=0.1):
     return idx_train, idx_val, idx_test
 
 def split_data_attention(complete, num_taxa, scaler_path, metadata_woT, train_percentage, val_percentage):
+    lag_targets =3
     logger.info("Splitting data for %s taxa", num_taxa)
+    metadata_woT = metadata_woT.drop(['Time'], axis=1)
+    metadata_woT = metadata_woT.fillna(0)
     scaled_data, scaler = scale_date(complete, scaler_path)
     X_bact = scaled_data[:, num_taxa:(num_taxa + lag_targets)]
     X_bact = X_bact.reshape(X_bact.shape[0], 1, X_bact.shape[1])
