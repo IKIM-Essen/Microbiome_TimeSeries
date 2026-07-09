@@ -328,6 +328,11 @@ def fit_model(
                 batch_size=32,
                 callbacks=[es]
             )
+            if save_model:
+                attention_path = os.path.join(model_path, "attention_model.h5")
+                logger.info("Saving attention model to %s", attention_path)
+                attention.save(attention_path)
+            logger.info("Model fitting completed successfully")
             
             return attention
 

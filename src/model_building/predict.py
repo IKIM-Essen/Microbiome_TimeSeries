@@ -29,16 +29,24 @@ def predict(
     X_train,
     X_val,
     X_test,
+    X_meta_train=None,
+    X_meta_val=None,
+    X_meta_test=None,
     tcn_path=None,
     lstm_path=None,
+    attention_path = None,
     scaler_path=None,
     output_path=None,
     model_architecture=None,
+
 ):
-    tcn = load_model_if_path(tcn_path)
-    lstm = load_model_if_path(lstm_path)
+    #tcn = load_model_if_path(tcn_path)
+    #lstm = load_model_if_path(lstm_path)
+    #attention = load_model_if_path(attention_path)
     # If a specific architecture is requested, use that preference.
     if model_architecture == "tcn_lstm":
+        tcn = load_model_if_path(tcn_path)
+        lstm = load_model_if_path(lstm_path)
         if tcn is None or lstm is None:
             raise ValueError(
                 "tcn_lstm requested but one of tcn_path or lstm_path is missing"
@@ -47,11 +55,17 @@ def predict(
         pred_val = ensemble_predict(tcn, lstm, X_val)
         pred_test = ensemble_predict(tcn, lstm, X_test)
     elif model_architecture == "lstm":
+        lstm = load_model_if_path(lstm_path)
         if lstm is None:
             raise ValueError("lstm requested but lstm_path is missing")
         pred_train = lstm.predict(X_train)
         pred_val = lstm.predict(X_val)
         pred_test = lstm.predict(X_test)
+    elif model_architecture == "attention":
+        attention = load_model_if_path(attention_path)
+        pred_train = attention.predict([X_train, X_meta_train])
+        pred_val = attention.predict([X_val, X_meta_val])
+        pred_test = attention.predict([X_test, X_meta_test])
     else:
         # Fallback: infer based on which models are available
         if tcn is not None and lstm is not None:
@@ -66,7 +80,7 @@ def predict(
             raise ValueError(
                 "No model found for prediction: provide tcn_path or lstm_path"
             )
-
+    print(output_path)
     if output_path:
         output_dir = os.path.dirname(output_path)
         if output_dir:

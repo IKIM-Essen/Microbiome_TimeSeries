@@ -92,6 +92,7 @@ def build_paths(profile):
     p["model_dir"] = os.path.join(base, paths.get("models", "models"))
     p["tcn_model"] = os.path.join(base, paths.get("models", "models"), "tcn_model.h5")
     p["lstm_model"] = os.path.join(base, paths.get("models", "models"), "lstm_model.h5")
+    p["attention_model"] = os.path.join(base, paths.get("models", "models"), "attention_model.h5")
     p["evaluation_output"] = os.path.join(
         base, paths.get("tables", "tables"), "evaluation_metrics.tsv"
     )
@@ -169,7 +170,7 @@ def main():
     # Stage: prediction
     if (requested is None) or ("predict" in requested):
         model_arch = profile.get("model_architecture")
-        cmd = f"python scripts/prediction.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']} --output {pp['predictions_npz']}"
+        cmd = f"python scripts/prediction.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']}  --attention-path {pp['attention_model']} --output {pp['predictions_npz']}"
         if model_arch:
             cmd = cmd + f" --model-architecture {model_arch}"
         run_cmd(cmd, dry_run=args.dry_run)
