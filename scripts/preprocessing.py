@@ -41,7 +41,7 @@ def main():
     )
     parser.add_argument(
         "--include-metadata",
-        type=bool,
+        type=str,
         default=False,
         help="Whether to include metadata in the output dataframe. Default is False.",
     )
@@ -102,7 +102,7 @@ def main():
     )
 
     args = parser.parse_args()
-
+    
     complete_df, metadata, number_taxa, dic_TargTax = create_complete_df(
         args.timeseries, args.metadata, args.taxa, args.include_metadata, args.output
     )
@@ -159,7 +159,11 @@ def main():
             X_meta_val=X_meta_val,
             X_meta_test=X_meta_test
         )
+        print(args.include_metadata)
+        print(complete_df.head)
+        print(X_bact_train.shape, X_meta_train.shape, y_train.shape)
         print("Data split completed!")
+        print(f"Saved split batches to {args.splits_output}")
 
 
 if __name__ == "__main__":

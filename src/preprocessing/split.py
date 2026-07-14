@@ -128,9 +128,24 @@ def split_data_attention(complete, num_taxa, scaler_path, metadata_woT, train_pe
     logger.info("Splitting data for %s taxa", num_taxa)
     metadata_woT = metadata_woT.drop(['Time'], axis=1)
     metadata_woT = metadata_woT.fillna(0)
+    print(complete.shape)
+    complete = complete.dropna()
+    for y in range(num_taxa):
+        for i in range(1, 4):
+            complete[f'Target{y+1}_Lag_{i}'] = complete[f'Target{y+1}'].shift(i)
+            lag_targets += 1
+    complete = complete.fillna(0)
+    print(complete.shape)
+    #complete = complete.drop(['Time'], axis=1)
+    print(complete.shape)
     scaled_data, scaler = scale_date(complete, scaler_path)
+    print("Scaled!")
+    print(num_taxa)
+    print(scaled_data.shape)
     X_bact = scaled_data[:, num_taxa:(num_taxa + lag_targets)]
+    print(X_bact.shape)
     X_bact = X_bact.reshape(X_bact.shape[0], 1, X_bact.shape[1])
+    print(X_bact.shape)
 
     # Convert metadata to numpy and reshape for time dimension
     X_meta = np.array(metadata_woT, dtype=np.float32)
@@ -160,5 +175,7 @@ def split_data_attention(complete, num_taxa, scaler_path, metadata_woT, train_pe
     y_train = y[idx_train]
     y_val   = y[idx_val]
     y_test  = y[idx_test]
+    print(X_bact_train.shape)
+    print(X_meta.shape)
 
     return X_bact_train, y_train, X_bact_val, y_val, X_bact_test, y_test, X_meta_train, X_meta_val, X_meta_test

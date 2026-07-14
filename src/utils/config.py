@@ -2,6 +2,7 @@ import yaml
 import logging
 import os
 import keras
+import numpy as np
 import pandas as pd
 from pathlib import Path
 
@@ -21,6 +22,27 @@ def extract_species(taxa):
 def reshape(predictions):
     reshaped = predictions.reshape(predictions.shape[0], predictions.shape[2])
     return reshaped
+
+def reshape_attention(predictions, original, num_taxa):
+    array = []
+    for i in range(predictions.shape[1]):
+        liste = predictions[:, i].reshape(-1, 1)
+        array.append(liste)
+    predictions_reshaped = np.concatenate((array),axis=1)
+    print("Reshaping")
+    print(predictions.shape)
+    print(predictions_reshaped.shape)
+    print(original.shape)
+    predictions_reshaped = predictions.reshape(predictions.shape[0], predictions.shape[2])
+    print(predictions_reshaped.shape)
+    predictions_concat = np.concatenate([predictions_reshaped, original.reshape(original.shape[0],original.shape[2])], axis=1)
+    print(predictions_concat.shape)
+    return predictions_concat
+
+
+def reshape_original_attention(y, X):
+    y = np.concatenate([y, X.reshape(X.shape[0], X.shape[2])], axis=1)
+    return y
 
 
 def get_num_taxa(taxa):

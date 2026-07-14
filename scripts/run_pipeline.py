@@ -151,10 +151,11 @@ def main():
     if (requested is None) or ("preprocess" in requested):
         cmd = (
             f"python scripts/preprocessing.py --timeseries {pp['timeseries']} --metadata {pp['metadata']} "
-            f"--taxa {pp['taxa']} --include-metadata {str(profile.get('parameters', {}).get('include_metadata', False))} "
-            f"--output {pp['complete_csv']} --mapping-output {pp['mapping_output']} --model-architecture {profile.get('model_architecture')}"
+            f"--taxa {pp['taxa']} --include-metadata {profile.get('parameters', {}).get('include_metadata', False)} "
+            f"--output {pp['complete_csv']} --mapping-output {pp['mapping_output']} --model-architecture {profile.get('model_architecture')} "
             f"--splits-output {pp['splits_output']} --scaler-path {pp['model_dir']} --splits-sizes {pp['split_sizes']} "
         )
+        print(profile.get('parameters', {}).get('include_metadata'))
         run_cmd(cmd, dry_run=args.dry_run)
         print(cmd)
 
@@ -177,7 +178,10 @@ def main():
 
     # Stage: evaluation
     if (requested is None) or ("evaluate" in requested):
-        cmd = f"python scripts/evaluation.py --prediction-results {pp['predictions_npz']} --splits {pp['splits_output']} --output {pp['evaluation_output']}"
+        model_arch = profile.get("model_architecture")
+        cmd = f"python scripts/evaluation.py --prediction-results {pp['predictions_npz']} --splits {pp['splits_output']} --output {pp['evaluation_output']} --scaler-path {pp['model_dir']}"
+        if model_arch:
+            cmd = cmd + f" --model-architecture {model_arch}"
         run_cmd(cmd, dry_run=args.dry_run)
 
     if (requested is None) or ("interval" in requested):

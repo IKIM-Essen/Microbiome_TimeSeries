@@ -45,26 +45,53 @@ def main():
         default="results/tables/evaluation_metrics.tsv",
         help="Path to the saved evaluation metrics.",
     )
+    parser.add_argument(
+        "--model-architecture",
+        type=str,
+        default=None,
+        help="Model architecture used for prediction (tcn_lstm, lstm, attention). If omitted, reads config/profile.yaml",
+    )
+    parser.add_argument(
+        "--scaler-path",
+        type=str,
+        default=None,
+        help="Path to the scaler file used for inverse scaling.",
+    )
 
     args = parser.parse_args()
     logger.info("Starting evaluation with arguments: %s", args)
 
     logger.info("Loading prediction results from %s", args.prediction_results)
     predictions = np.load(args.prediction_results)
-    y_pred_train = predictions["pred_train"]
-    y_pred_val = predictions["pred_val"]
-    y_pred_test = predictions["pred_test"]
+    if args.model_architecture != "attention":
+        print("No attention")
+        y_pred_train = predictions["pred_train"]
+        y_pred_val = predictions["pred_val"]
+        y_pred_test = predictions["pred_test"]
 
-    y_pred_train = np.squeeze(y_pred_train, axis=1)
-    y_pred_test = np.squeeze(y_pred_test, axis=1)
+        y_pred_train = np.squeeze(y_pred_train, axis=1)
+        y_pred_test = np.squeeze(y_pred_test, axis=1)
 
-    actual = np.load(args.splits)
-    y_train = actual["y_train"]
-    y_val = actual["y_val"]
-    y_test = actual["y_test"]
+        actual = np.load(args.splits)
+        y_train = actual["y_train"]
+        y_val = actual["y_val"]
+        y_test = actual["y_test"]
+    
+    elif args.model_architecture == "attention":
+        print("attention")
+        actual = np.load(args.splits)
+        X_train = actual["X_bact_train"]
+        X_test = actual["X_bact_test"]
+        y_pred_train = predictions["pred_train"]
+        y_pred_val = predictions["pred_val"]
+        y_pred_test = predictions["pred_test"]
+
+        y_train = actual["y_train"]
+        y_val = actual["y_val"]
+        y_test = actual["y_test"]
 
     evaluation_metrics = combine_metrics(
-        y_train, y_test, y_pred_train, y_pred_test, args.output
+        X_train, X_test, y_train, y_test, y_pred_train, y_pred_test, args.output, args.scaler_path, args.model_architecture
     )
 
 
