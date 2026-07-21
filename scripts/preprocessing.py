@@ -67,7 +67,7 @@ def main():
         "--model-architecture",
         type=str,
         default=None,
-        choices=["tcn_lstm", "lstm", "attention"],
+        choices=["tcn_lstm", "lstm", "attention", "metadata_parallel"],
         help="Model architecture used for preprocessing. Attention uses the dedicated scaling and splitting path.",
     )
     parser.add_argument(
@@ -112,7 +112,7 @@ def main():
         pickle.dump(dic_TargTax, mapping_file)
     print(f"Saved target taxa mapping to {args.mapping_output}")
 
-    if args.split_data and args.model_architecture != "attention":
+    if args.split_data and (args.model_architecture != "attention" and args.model_architecture != "metadata_parallel"):
         X_train, y_train, X_val, y_val, X_test, y_test = split_data(
             complete_df,
             number_taxa,
@@ -137,7 +137,7 @@ def main():
         print(f"X_test={X_test.shape}, y_test={y_test.shape}")
         print(f"Saved split batches to {args.splits_output}")
     
-    elif args.split_data and args.model_architecture == "attention":
+    elif args.split_data and (args.model_architecture == "attention" or args.model_architecture == "metadata_parallel"):
         X_bact_train, y_train, X_bact_val, y_val, X_bact_test, y_test, X_meta_train, X_meta_val, X_meta_test = split_data_attention(
             complete_df,
             number_taxa,
@@ -146,6 +146,8 @@ def main():
             args.train_percentage,
             args.val_percentage,
         )
+        print("Metadata!")
+        print(X_meta_train)
         os.makedirs(os.path.dirname(args.splits_output), exist_ok=True)
         np.savez_compressed(
             args.splits_output,
@@ -162,6 +164,9 @@ def main():
         print(args.include_metadata)
         print(complete_df.head)
         print(X_bact_train.shape, X_meta_train.shape, y_train.shape)
+        print(X_bact_val.shape, X_meta_val.shape, y_val.shape)
+        print(X_bact_test.shape, X_meta_test.shape, y_test.shape)
+        print("Metadata!")
         print("Data split completed!")
         print(f"Saved split batches to {args.splits_output}")
 

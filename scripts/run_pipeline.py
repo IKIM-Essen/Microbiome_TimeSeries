@@ -93,6 +93,7 @@ def build_paths(profile):
     p["tcn_model"] = os.path.join(base, paths.get("models", "models"), "tcn_model.h5")
     p["lstm_model"] = os.path.join(base, paths.get("models", "models"), "lstm_model.h5")
     p["attention_model"] = os.path.join(base, paths.get("models", "models"), "attention_model.h5")
+    p["metadata_model"] = os.path.join(base, paths.get("models", "models"), "meta_lstm.h5")
     p["evaluation_output"] = os.path.join(
         base, paths.get("tables", "tables"), "evaluation_metrics.tsv"
     )
@@ -171,9 +172,13 @@ def main():
     # Stage: prediction
     if (requested is None) or ("predict" in requested):
         model_arch = profile.get("model_architecture")
-        cmd = f"python scripts/prediction.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']}  --attention-path {pp['attention_model']} --output {pp['predictions_npz']}"
+        cmd = f"python scripts/prediction.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']} --output {pp['predictions_npz']}"
         if model_arch:
             cmd = cmd + f" --model-architecture {model_arch}"
+        if model_arch == "metadata_parallel":
+            cmd = cmd + f" --attention-path {pp['metadata_model']}"
+        if model_arch == "attention":
+            cmd = cmd + f" --attention-path {pp['attention_model']}"
         run_cmd(cmd, dry_run=args.dry_run)
 
     # Stage: evaluation
@@ -186,6 +191,7 @@ def main():
 
     if (requested is None) or ("interval" in requested):
         # Build sensible defaults for interval stage using profile and built paths
+        model_arch = profile.get("model_architecture")
         num_models = profile.get("parameters", {}).get("number_ensemble_model", 5)
         base = _get_project_base(profile)
         tables_dir = os.path.join(
@@ -200,7 +206,7 @@ def main():
             f"python scripts/interval.py --num-models {num_models} --splits-input {pp['splits_output']} "
             f"--scaler {scaler_path} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']} "
             f"--output {interval_output} --complete-input {pp['complete_csv']} --dic-taxa {pp['mapping_output']} "
-            f"--anomalies-output {anomalies_output}"
+            f"--anomalies-output {anomalies_output}  --model-architecture {model_arch}"
         )
         run_cmd(cmd, dry_run=args.dry_run)
 

@@ -63,7 +63,7 @@ def main():
 
     logger.info("Loading prediction results from %s", args.prediction_results)
     predictions = np.load(args.prediction_results)
-    if args.model_architecture != "attention":
+    if args.model_architecture != "attention" and args.model_architecture != "metadata_parallel":
         print("No attention")
         y_pred_train = predictions["pred_train"]
         y_pred_val = predictions["pred_val"]
@@ -79,7 +79,7 @@ def main():
         X_train = None
         X_test = None
     
-    elif args.model_architecture == "attention":
+    elif args.model_architecture == "attention" or args.model_architecture == "metadata_parallel":
         print("attention")
         actual = np.load(args.splits)
         X_train = actual["X_bact_train"]

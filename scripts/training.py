@@ -50,14 +50,14 @@ def main():
             "--model-architecture",
             type=str,
             default=None,
-            help="Model architecture to train (tcn_lstm, lstm, attention). If omitted, will read from config/profile.yaml",
+            help="Model architecture to train (tcn_lstm, lstm, attention, metadata_parallel). If omitted, will read from config/profile.yaml",
         )
 
         args = parser.parse_args()
         logger.info("Starting model training with splits from %s", args.splits_input)
 
         # Train according to requested model architecture
-        if args.model_architecture != "attention" or "metadata_parallel":
+        if args.model_architecture != "attention" and args.model_architecture != "metadata_parallel":
             # Load preprocessed training and validation splits from the saved npz file
             splits = np.load(args.splits_input)
             X_train = splits["X_train"]
@@ -86,7 +86,7 @@ def main():
                 model_architecture=args.model_architecture,
                 save_model=True,
             )
-        elif args.model_architecture == "attention" or "metadata_parallel":
+        elif args.model_architecture == "attention" or args.model_architecture == "metadata_parallel":
             splits = np.load(args.splits_input)
             print(splits.files)
             X_train = splits["X_bact_train"]

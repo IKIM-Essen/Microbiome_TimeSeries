@@ -107,7 +107,7 @@ def combine_metrics(X_train, X_test, y_train, y_test, predict_train, predict_tes
 
     num_taxa = y_train.shape[1]
 
-    if model_architecture == "attention":
+    if model_architecture == "attention" or model_architecture == "metadata_parallel":
         print("Yes")
         predict_train = reshape_attention(predict_train, X_train, y_train.shape[1])
         predict_test = reshape_attention(predict_test, X_test, y_test.shape[1])
