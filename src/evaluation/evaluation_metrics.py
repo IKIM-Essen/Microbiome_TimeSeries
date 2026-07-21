@@ -105,13 +105,21 @@ def combine_metrics(X_train, X_test, y_train, y_test, predict_train, predict_tes
     - dict: calculated metrics
     """
 
+    num_taxa = y_train.shape[1]
+
     if model_architecture == "attention":
-        num_taxa = y_train.shape[1]
         print("Yes")
         predict_train = reshape_attention(predict_train, X_train, y_train.shape[1])
         predict_test = reshape_attention(predict_test, X_test, y_test.shape[1])
         y_train = reshape_original_attention(y_train, X_train)
         y_test = reshape_original_attention(y_test, X_test)
+    else:
+        # For TCN/LSTM, predictions are shaped as (samples, horizon, num_targets)
+        # and need to be reduced to the target dimension before inverse scaling.
+        if predict_train.ndim == 3:
+            predict_train = predict_train[:, -1, :]
+        if predict_test.ndim == 3:
+            predict_test = predict_test[:, -1, :]
 
     metrics = {
         "MAE train": mae(y_train, predict_train, num_taxa, scaler_path),

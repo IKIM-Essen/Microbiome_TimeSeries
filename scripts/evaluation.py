@@ -76,6 +76,8 @@ def main():
         y_train = actual["y_train"]
         y_val = actual["y_val"]
         y_test = actual["y_test"]
+        X_train = None
+        X_test = None
     
     elif args.model_architecture == "attention":
         print("attention")

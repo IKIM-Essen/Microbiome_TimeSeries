@@ -38,8 +38,10 @@ def read_prediction_interval(tsv_path):
 
 def flatten_prediction(pred):
     pred = np.asarray(pred)
-    if pred.ndim == 3 and pred.shape[1] == 1:
-        return pred.reshape(pred.shape[0], pred.shape[2])
+    if pred.ndim == 3:
+        # Handle prediction tensors from windowed models by taking the final timestep.
+        # This covers shapes like (samples, 1, n_targets) and (samples, 3, n_targets).
+        return pred[:, -1, :]
     if pred.ndim == 2:
         return pred
     raise ValueError(f"Cannot flatten prediction array with shape {pred.shape}")
@@ -100,10 +102,6 @@ def plot_taxa_dropdown(
     if predictions_npz and os.path.exists(predictions_npz):
         pred_train, pred_val, pred_test = load_predictions(predictions_npz)
         logger.info("Loaded prediction arrays from %s", predictions_npz)
-
-    print("hi")
-    print(pred_train.shape)
-    print(pred_val.shape)
 
     train_size = pred_train.shape[0]
     val_size = pred_val.shape[0]
@@ -176,7 +174,6 @@ def plot_taxa_dropdown(
             row=1,
             col=1,
         )
-        # print(interval_df)
         if include_interval:
             pi_slice = interval_df[interval_df["species"] == taxa_name].sort_values(
                 "timepoint"
@@ -186,12 +183,7 @@ def plot_taxa_dropdown(
                 interval_df["species"].astype(str).str.strip("[]").str.strip("'")
             )
 
-            # if taxa_name in interval_df["species"].values:
-            #    print(f"Found: {taxa_name}")
-            # print(taxa_name)
-            # print("1")
             if not pi_slice.empty:
-                # print("2")
                 times = complete["Time"].values
                 n_pi = len(pi_slice)
                 times_pi = times[-n_pi:] if n_pi <= len(times) else times
@@ -262,15 +254,10 @@ def plot_taxa_dropdown(
                     col=1,
                 )
             else:
-                # print("3")
                 for _ in range(5):
                     fig.add_trace(go.Scatter(x=[], y=[], visible=False), row=1, col=1)
-        print
         if train_size is not None and pred_train is not None and pred_val is not None:
-            # print("5")
             idx = parse_target_index(target_col)
-            # print(idx)
-            # print(pred_train)
             fig.add_trace(
                 go.Scatter(
                     x=complete["Time"].iloc[:train_size],
@@ -283,8 +270,6 @@ def plot_taxa_dropdown(
                 row=1,
                 col=1,
             )
-            # print(pred_val)
-            # print(pred_val[:, idx])
             fig.add_trace(
                 go.Scatter(
                     x=complete["Time"].iloc[train_size : (val_size + train_size)],

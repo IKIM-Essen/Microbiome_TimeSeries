@@ -9,6 +9,16 @@ from src.model_building.create_models import (
 from src.utils.config import reshape, load_config
 from src.preprocessing.scaling import inverse_scale_data
 
+
+def _prepare_prediction_array(predictions):
+    """Convert windowed model outputs to a 2D target array for evaluation."""
+    predictions = np.asarray(predictions)
+    if predictions.ndim == 3:
+        return predictions[:, -1, :]
+    if predictions.ndim == 2:
+        return predictions
+    raise ValueError(f"Unsupported prediction shape for interval evaluation: {predictions.shape}")
+
 CONFIG_PATH = "config/profile.yaml"
 
 config = load_config(CONFIG_PATH)
@@ -71,7 +81,7 @@ def predict_interval(
 
         # elif mode == "attention":
 
-        y_val_tcn = reshape(predictions_val)
+        y_val_tcn = _prepare_prediction_array(predictions_val)
 
         y_val_tcn = inverse_scale_data(y_val_tcn, scaler_path)
 
@@ -87,7 +97,7 @@ def predict_interval(
 
     stacked = np.stack(ensemble, axis=0)
     # Reshape to (3*14, 1544)
-    reshaped = stacked.reshape(-1, Xtrain.shape[2])  # shape: (42, 1544)
+    reshaped = stacked.reshape(-1, Ytrain.shape[1])  # shape: (42, 1544)
 
     # Variance over timepoints and repetitions
     feature_variance = np.var(reshaped, axis=0, ddof=1)  # shape: (1544,)
@@ -144,9 +154,9 @@ def predict_interval(
         elif mode == "lstm":
             predictions_test = lstm.predict(Xtest)
 
-        y_test_tcn = reshape(predictions_test)
+        y_test_tcn = _prepare_prediction_array(predictions_test)
 
-        predictions_reshaped = inverse_scale_data(y_test_tcn)
+        predictions_reshaped = inverse_scale_data(y_test_tcn,scaler_path)
 
         yhat = predictions_reshaped[: len(species)]
         ensemble_2.append(yhat)

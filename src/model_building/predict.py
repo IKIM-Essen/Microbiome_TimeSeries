@@ -51,6 +51,14 @@ def predict(
             raise ValueError(
                 "tcn_lstm requested but one of tcn_path or lstm_path is missing"
             )
+
+        # The trained models expect an input tensor of shape (samples, time_steps, features).
+        # Keep the same 3-step window length used during training.
+        if X_train.ndim != 3:
+            raise ValueError(
+                f"Expected 3D input tensor for tcn_lstm prediction, got shape {X_train.shape}"
+            )
+
         pred_train = ensemble_predict(tcn, lstm, X_train)
         pred_val = ensemble_predict(tcn, lstm, X_val)
         pred_test = ensemble_predict(tcn, lstm, X_test)
@@ -66,6 +74,19 @@ def predict(
         pred_train = attention.predict([X_train, X_meta_train])
         pred_val = attention.predict([X_val, X_meta_val])
         pred_test = attention.predict([X_test, X_meta_test])
+    elif model_architecture == "metadata_parallel":
+        tcn = load_model_if_path(tcn_path)
+        lstm = load_model_if_path(lstm_path)
+        meta = load_model_if_path(attention_path)
+        pred_train = ensemble_predict(tcn, lstm, X_train)
+        pred_val = ensemble_predict(tcn, lstm, X_val)
+        pred_test = ensemble_predict(tcn, lstm, X_test)
+        meta_train = meta.predict(X_meta_train)
+        meta_val = meta.predict(X_meta_val)
+        meta_test = meta.predict(X_meta_test)
+        pred_train = (pred_train+meta_train)/2
+        pred_val = (pred_val+meta_val)/2
+        pred_test = (pred_test+meta_test)/2
     else:
         # Fallback: infer based on which models are available
         if tcn is not None and lstm is not None:

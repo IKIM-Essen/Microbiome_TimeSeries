@@ -223,7 +223,7 @@ def fit_model(
         )
 
         # Example setup
-        time_steps = 1  # input window length
+        time_steps = X_train.shape[1]  # input window length
         num_features = X_train.shape[2]  # number of input features
         num_targets = y_train.shape[1]  # number of target variables
         horizon = 1  # prediction horizon
@@ -335,6 +335,75 @@ def fit_model(
             logger.info("Model fitting completed successfully")
             
             return attention
+        
+        elif model_type == "metadata_parallel":
+            # Build models and compile them for regression
+            tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
+            tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+            lstm_model = build_lstm((time_steps, num_features), num_targets, horizon)
+            lstm_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+            logger.info("Models built and compiled successfully")
+
+            # --- Train TCN first ---
+            logger.info("Starting TCN model training")
+            tcn_model.fit(
+                X_train,
+                y_train,
+                epochs=10,
+                batch_size=32,
+                validation_data=(X_val, y_val),
+            )
+            logger.info("TCN model training completed")
+
+            # --- Compute residuals ---
+            # Residuals are the difference between the true target and the TCN prediction.
+            logger.info("Computing residuals for LSTM training")
+            y_tcn_pred = tcn_model.predict(X_train)
+            residuals = y_train - y_tcn_pred
+
+            y_pred_tcn_val = tcn_model.predict(X_val)
+            residuals_val = y_val - y_pred_tcn_val
+            logger.info("Residuals computed successfully")
+
+            # --- Train LSTM on residuals ---
+            logger.info("Starting LSTM model training on residuals")
+            es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=10)
+            lstm_model.fit(
+                X_train,
+                residuals,
+                epochs=100,
+                batch_size=32,
+                validation_data=(X_val, residuals_val),
+                callbacks=[es],
+            )
+            logger.info("LSTM model training completed")
+
+            # --- Train LSTM on metadata ---
+            logger.info("Training separate LSTM on metadata")
+            es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=10)
+            lstm_model.fit(
+                X_meta_train,
+                y_train,
+                epochs=100,
+                batch_size=32,
+                validation_data=(X_meta_val, y_train),
+                callbacks=[es],
+            )
+            logger.info("LSTM model training completed")
+
+            if save_model:
+                tcn_path = os.path.join(model_path, "tcn_model.h5")
+                lstm_path = os.path.join(model_path, "lstm_model.h5")
+                meta_path = os.path.join(model_path, "meta_lstm.h5")
+                logger.info("Saving TCN model to %s", tcn_path)
+                tcn_model.save(tcn_path)
+                logger.info("Saving LSTM model to %s", lstm_path)
+                lstm_model.save(lstm_path)
+                logger.info("Saving meta LSTM model to %s", meta_path)
+                meta_path.save(meta_path)
+            logger.info("Model fitting completed successfully")
+
+            return tcn_model, lstm_model, meta_path
 
     except Exception as e:
         logger.error("Error during model fitting: %s", str(e), exc_info=True)

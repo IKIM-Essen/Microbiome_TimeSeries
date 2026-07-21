@@ -57,7 +57,7 @@ def main():
         logger.info("Starting model training with splits from %s", args.splits_input)
 
         # Train according to requested model architecture
-        if args.model_architecture != "attention":
+        if args.model_architecture != "attention" or "metadata_parallel":
             # Load preprocessed training and validation splits from the saved npz file
             splits = np.load(args.splits_input)
             X_train = splits["X_train"]
@@ -86,7 +86,7 @@ def main():
                 model_architecture=args.model_architecture,
                 save_model=True,
             )
-        elif args.model_architecture == "attention":
+        elif args.model_architecture == "attention" or "metadata_parallel":
             splits = np.load(args.splits_input)
             print(splits.files)
             X_train = splits["X_bact_train"]
