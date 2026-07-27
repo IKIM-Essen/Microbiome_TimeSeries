@@ -34,15 +34,14 @@ def predict(
     X_meta_test=None,
     tcn_path=None,
     lstm_path=None,
-    attention_path = None,
+    attention_path=None,
     scaler_path=None,
     output_path=None,
     model_architecture=None,
-
 ):
-    #tcn = load_model_if_path(tcn_path)
-    #lstm = load_model_if_path(lstm_path)
-    #attention = load_model_if_path(attention_path)
+    # tcn = load_model_if_path(tcn_path)
+    # lstm = load_model_if_path(lstm_path)
+    # attention = load_model_if_path(attention_path)
     # If a specific architecture is requested, use that preference.
     if model_architecture == "tcn_lstm":
         tcn = load_model_if_path(tcn_path)
@@ -84,9 +83,9 @@ def predict(
         meta_train = meta.predict(X_meta_train)
         meta_val = meta.predict(X_meta_val)
         meta_test = meta.predict(X_meta_test)
-        pred_train = (pred_train+meta_train)/2
-        pred_val = (pred_val+meta_val)/2
-        pred_test = (pred_test+meta_test)/2
+        pred_train = (pred_train + meta_train) / 2
+        pred_val = (pred_val + meta_val) / 2
+        pred_test = (pred_test + meta_test) / 2
     else:
         # Fallback: infer based on which models are available
         if tcn is not None and lstm is not None:

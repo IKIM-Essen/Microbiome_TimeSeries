@@ -101,7 +101,7 @@ def main():
     )
 
     args = parser.parse_args()
-    
+
     complete_df, metadata, number_taxa, dic_TargTax = create_complete_df(
         args.timeseries, args.metadata, args.taxa, args.include_metadata, args.output
     )
@@ -111,7 +111,10 @@ def main():
         pickle.dump(dic_TargTax, mapping_file)
     print(f"Saved target taxa mapping to {args.mapping_output}")
 
-    if args.split_data and (args.model_architecture != "attention" and args.model_architecture != "metadata_parallel"):
+    if args.split_data and (
+        args.model_architecture != "attention"
+        and args.model_architecture != "metadata_parallel"
+    ):
         X_train, y_train, X_val, y_val, X_test, y_test = split_data(
             complete_df,
             number_taxa,
@@ -135,9 +138,22 @@ def main():
         print(f"X_val={X_val.shape}, y_val={y_val.shape}")
         print(f"X_test={X_test.shape}, y_test={y_test.shape}")
         print(f"Saved split batches to {args.splits_output}")
-    
-    elif args.split_data and (args.model_architecture == "attention" or args.model_architecture == "metadata_parallel"):
-        X_bact_train, y_train, X_bact_val, y_val, X_bact_test, y_test, X_meta_train, X_meta_val, X_meta_test = split_data_attention(
+
+    elif args.split_data and (
+        args.model_architecture == "attention"
+        or args.model_architecture == "metadata_parallel"
+    ):
+        (
+            X_bact_train,
+            y_train,
+            X_bact_val,
+            y_val,
+            X_bact_test,
+            y_test,
+            X_meta_train,
+            X_meta_val,
+            X_meta_test,
+        ) = split_data_attention(
             complete_df,
             number_taxa,
             args.scaler_path,
@@ -156,7 +172,7 @@ def main():
             y_test=y_test,
             X_meta_train=X_meta_train,
             X_meta_val=X_meta_val,
-            X_meta_test=X_meta_test
+            X_meta_test=X_meta_test,
         )
         print(args.include_metadata)
         print(complete_df.head)

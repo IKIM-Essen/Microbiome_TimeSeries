@@ -12,7 +12,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 
 from src.evaluation.ensemble import predict_interval
-from src.evaluation.ensemble_metadata import predict_interval as predict_interval_metadata
+from src.evaluation.ensemble_metadata import (
+    predict_interval as predict_interval_metadata,
+)
 from src.evaluation.outlier import find_interval_anomalies
 from src.utils.config import extract_species, prediction_interval_to_df
 
@@ -94,7 +96,10 @@ def main():
     args = parser.parse_args()
     logger.info("Starting evaluation with arguments: %s", args)
 
-    if args.model_architecture != "attention" and args.model_architecture != "metadata_parallel":
+    if (
+        args.model_architecture != "attention"
+        and args.model_architecture != "metadata_parallel"
+    ):
         logger.info("Loading splits from %s", args.splits_input)
         splits = np.load(args.splits_input)
         X_train = splits["X_train"]
@@ -128,7 +133,10 @@ def main():
             args.lstm_path,
         )
 
-    elif args.model_architecture == "attention" or args.model_architecture == "metadata_parallel":
+    elif (
+        args.model_architecture == "attention"
+        or args.model_architecture == "metadata_parallel"
+    ):
         logger.info("Loading splits from %s", args.splits_input)
         splits = np.load(args.splits_input)
         X_train = splits["X_bact_train"]
@@ -155,15 +163,15 @@ def main():
         prediction_interval = predict_interval_metadata(
             args.num_models,
             X_train,
-            y_train, 
-            X_val, 
-            y_val, 
-            X_test, 
-            X_meta_train, 
-            X_meta_val, 
-            X_meta_test, 
-            y_test, 
-            args.scaler, 
+            y_train,
+            X_val,
+            y_val,
+            X_test,
+            X_meta_train,
+            X_meta_val,
+            X_meta_test,
+            y_test,
+            args.scaler,
             species,
             args.tcn_path,
         )

@@ -75,23 +75,19 @@ def build_standalone_lstm(input_shape, output_dim, horizon=1):
 def TCNBlock(input_layer, filters=64, kernel_size=3, num_layers=4, dropout=0.2):
     x = input_layer
     for i in range(num_layers):
-        dilation = 2 ** i
+        dilation = 2**i
         x = layers.Conv1D(
             filters,
             kernel_size,
             dilation_rate=dilation,
             padding="causal",
-            activation="relu"
+            activation="relu",
         )(x)
         x = layers.Dropout(dropout)(x)
     return x
 
 
-def build_attention(
-        bact_shape,
-        meta_shape,
-        output_dim,
-        horizon=3):
+def build_attention(bact_shape, meta_shape, output_dim, horizon=3):
 
     # ----- Inputs -----
     bact_input = layers.Input(shape=bact_shape, name="bacterial_input")
@@ -100,29 +96,17 @@ def build_attention(
     # ===============================
     # Bacterial TCN branch
     # ===============================
-    tcn = TCNBlock(
-        bact_input,
-        filters=128,
-        kernel_size=3,
-        num_layers=4,
-        dropout=0.2
-    )
+    tcn = TCNBlock(bact_input, filters=128, kernel_size=3, num_layers=4, dropout=0.2)
 
     tcn = layers.GlobalAveragePooling1D()(tcn)
 
     # ===============================
     # Bacterial LSTM + attention
     # ===============================
-    lstm_seq = layers.LSTM(
-        128,
-        return_sequences=True,
-        name="bact_lstm"
-    )(bact_input)
+    lstm_seq = layers.LSTM(128, return_sequences=True, name="bact_lstm")(bact_input)
 
     attn = layers.MultiHeadAttention(
-        num_heads=4,
-        key_dim=32,
-        name="temporal_attention"
+        num_heads=4, key_dim=32, name="temporal_attention"
     )(lstm_seq, lstm_seq)
 
     attn = layers.GlobalAveragePooling1D()(attn)
@@ -133,11 +117,7 @@ def build_attention(
     # ===============================
     # Metadata LSTM branch
     # ===============================
-    meta_seq = layers.LSTM(
-        64,
-        return_sequences=True,
-        name="meta_lstm"
-    )(meta_input)
+    meta_seq = layers.LSTM(64, return_sequences=True, name="meta_lstm")(meta_input)
 
     meta_embed = layers.GlobalAveragePooling1D()(meta_seq)
 
@@ -146,21 +126,15 @@ def build_attention(
     # ===============================
     gate_input = layers.Concatenate()([bact_embed, meta_embed])
 
-    gate = layers.Dense(
-        2,
-        activation="softmax",
-        name="branch_gate"
-    )(gate_input)
+    gate = layers.Dense(2, activation="softmax", name="branch_gate")(gate_input)
 
-    gate_bact = layers.Lambda(lambda x: x[:,0:1])(gate)
-    gate_meta = layers.Lambda(lambda x: x[:,1:2])(gate)
+    gate_bact = layers.Lambda(lambda x: x[:, 0:1])(gate)
+    gate_meta = layers.Lambda(lambda x: x[:, 1:2])(gate)
 
     bact_weighted = layers.Multiply()([bact_embed, gate_bact])
     meta_weighted = layers.Multiply()([meta_embed, gate_meta])
 
-    combined = layers.Concatenate(name="final_concat")(
-        [bact_weighted, meta_weighted]
-    )
+    combined = layers.Concatenate(name="final_concat")([bact_weighted, meta_weighted])
 
     # ===============================
     # Prediction head
@@ -176,20 +150,14 @@ def build_attention(
     model = models.Model(
         inputs=[bact_input, meta_input],
         outputs=out,
-        name="Microbiome_TCN_LSTM_Attention_Gated"
+        name="Microbiome_TCN_LSTM_Attention_Gated",
     )
 
+    model.compile(optimizer="adam", loss="mse", metrics=["mae"])
 
-    model.compile(
-        optimizer="adam",
-        loss="mse",
-        metrics=["mae"]
-    )
-
-    #bact_input.save_weights("BigTimeseriesMetadata/bacterial_input_pretrained.h5")
+    # bact_input.save_weights("BigTimeseriesMetadata/bacterial_input_pretrained.h5")
 
     return model
-
 
 
 # Fit the TCN model first, then train the LSTM on the TCN residuals.
@@ -326,16 +294,16 @@ def fit_model(
                 validation_data=([X_val, X_meta_val], y_val),
                 epochs=100,
                 batch_size=32,
-                callbacks=[es]
+                callbacks=[es],
             )
             if save_model:
                 attention_path = os.path.join(model_path, "attention_model.h5")
                 logger.info("Saving attention model to %s", attention_path)
                 attention.save(attention_path)
             logger.info("Model fitting completed successfully")
-            
+
             return attention
-        
+
         elif model_type == "metadata_parallel":
             # Build models and compile them for regression
             tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
@@ -376,7 +344,9 @@ def fit_model(
             )
             logger.info("LSTM model training completed")
             # --- Train LSTM on metadata ---
-            metadata_model = build_lstm((time_steps, X_meta_train.shape[2]), num_targets, horizon)
+            metadata_model = build_lstm(
+                (time_steps, X_meta_train.shape[2]), num_targets, horizon
+            )
             metadata_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
             logger.info("Training separate LSTM on metadata")
             es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=10)

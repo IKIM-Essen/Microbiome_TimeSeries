@@ -92,8 +92,12 @@ def build_paths(profile):
     p["model_dir"] = os.path.join(base, paths.get("models", "models"))
     p["tcn_model"] = os.path.join(base, paths.get("models", "models"), "tcn_model.h5")
     p["lstm_model"] = os.path.join(base, paths.get("models", "models"), "lstm_model.h5")
-    p["attention_model"] = os.path.join(base, paths.get("models", "models"), "attention_model.h5")
-    p["metadata_model"] = os.path.join(base, paths.get("models", "models"), "meta_lstm.h5")
+    p["attention_model"] = os.path.join(
+        base, paths.get("models", "models"), "attention_model.h5"
+    )
+    p["metadata_model"] = os.path.join(
+        base, paths.get("models", "models"), "meta_lstm.h5"
+    )
     p["evaluation_output"] = os.path.join(
         base, paths.get("tables", "tables"), "evaluation_metrics.tsv"
     )
@@ -156,7 +160,7 @@ def main():
             f"--output {pp['complete_csv']} --mapping-output {pp['mapping_output']} --model-architecture {profile.get('model_architecture')} "
             f"--splits-output {pp['splits_output']} --scaler-path {pp['model_dir']} --splits-sizes {pp['split_sizes']} "
         )
-        print(profile.get('parameters', {}).get('include_metadata'))
+        print(profile.get("parameters", {}).get("include_metadata"))
         run_cmd(cmd, dry_run=args.dry_run)
         print(cmd)
 

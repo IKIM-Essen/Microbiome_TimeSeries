@@ -19,7 +19,10 @@ def _prepare_prediction_array(predictions):
         return predictions[:, -1, :]
     if predictions.ndim == 2:
         return predictions
-    raise ValueError(f"Unsupported prediction shape for interval evaluation: {predictions.shape}")
+    raise ValueError(
+        f"Unsupported prediction shape for interval evaluation: {predictions.shape}"
+    )
+
 
 CONFIG_PATH = "config/profile.yaml"
 
@@ -158,7 +161,7 @@ def predict_interval(
 
         y_test_tcn = _prepare_prediction_array(predictions_test)
 
-        predictions_reshaped = inverse_scale_data(y_test_tcn,scaler_path)
+        predictions_reshaped = inverse_scale_data(y_test_tcn, scaler_path)
 
         yhat = predictions_reshaped[: len(species)]
         ensemble_2.append(yhat)
@@ -206,13 +209,13 @@ def predict_interval(
 def TCNBlock(input_layer, filters=128, kernel_size=3, num_layers=4, dropout=0.2):
     x = input_layer
     for i in range(num_layers):
-        dilation = 2 ** i
+        dilation = 2**i
         x = layers.Conv1D(
             filters,
             kernel_size,
             dilation_rate=dilation,
             padding="causal",
-            activation="relu"
+            activation="relu",
         )(x)
         x = layers.Dropout(dropout)(x)
     return x
@@ -223,17 +226,13 @@ def build_big_architecture_model(bact_shape, meta_shape, output_dim, horizon=1):
     bact_input = Input(shape=bact_shape, name="bacterial_input")
     meta_input = Input(shape=meta_shape, name="metadata_input")
 
-    tcn = TCNBlock(
-        bact_input,
-        filters=128,
-        kernel_size=3,
-        num_layers=4,
-        dropout=0.2
-    )
+    tcn = TCNBlock(bact_input, filters=128, kernel_size=3, num_layers=4, dropout=0.2)
     tcn = layers.GlobalAveragePooling1D()(tcn)
 
     lstm_seq = layers.LSTM(128, return_sequences=True, name="bact_lstm")(bact_input)
-    attn = layers.MultiHeadAttention(num_heads=4, key_dim=32, name="temporal_attention")(lstm_seq, lstm_seq)
+    attn = layers.MultiHeadAttention(
+        num_heads=4, key_dim=32, name="temporal_attention"
+    )(lstm_seq, lstm_seq)
     attn = layers.GlobalAveragePooling1D()(attn)
 
     bact_embed = layers.Concatenate(name="bact_concat")([tcn, attn])
@@ -260,7 +259,7 @@ def build_big_architecture_model(bact_shape, meta_shape, output_dim, horizon=1):
     model = models.Model(
         inputs=[bact_input, meta_input],
         outputs=out,
-        name="Microbiome_TCN_LSTM_Attention_Gated"
+        name="Microbiome_TCN_LSTM_Attention_Gated",
     )
 
     model.compile(optimizer="adam", loss="mse", metrics=["mae"])
@@ -287,7 +286,13 @@ def fit_member_model(
         horizon=horizon,
     )
 
-    es = EarlyStopping(monitor="val_loss", mode="min", patience=patience, restore_best_weights=True, verbose=1)
+    es = EarlyStopping(
+        monitor="val_loss",
+        mode="min",
+        patience=patience,
+        restore_best_weights=True,
+        verbose=1,
+    )
     model.fit(
         [X_bact_train, X_meta_train],
         y_train,
@@ -335,7 +340,9 @@ def fit_ensemble(
 
 def _reshape_model_predictions(predictions):
     if predictions.ndim != 3:
-        raise ValueError("Expected model predictions with shape (samples, horizon, features)")
+        raise ValueError(
+            "Expected model predictions with shape (samples, horizon, features)"
+        )
     if predictions.shape[1] != 1:
         raise ValueError("This helper currently supports horizon=1 only")
     return predictions.reshape(predictions.shape[0], predictions.shape[2])
@@ -351,7 +358,9 @@ def inverse_transform_predictions(predictions, X_bact, scaler, num_taxa):
     return inverted[:, 0:num_taxa]
 
 
-def predict_with_pi(ensemble, X_bact_test, X_meta_test, scaler, num_taxa, coverage=0.95):
+def predict_with_pi(
+    ensemble, X_bact_test, X_meta_test, scaler, num_taxa, coverage=0.95
+):
     """Return upper/lower/mean intervals for each target using ensemble spread."""
     all_preds = []
     for model in ensemble:

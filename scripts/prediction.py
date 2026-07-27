@@ -75,7 +75,10 @@ def main():
     logger.info(
         "Successfully loaded splits.",
     )
-    if args.model_architecture != "attention" and args.model_architecture != "metadata_parallel":
+    if (
+        args.model_architecture != "attention"
+        and args.model_architecture != "metadata_parallel"
+    ):
         X_train = splits["X_train"]
         X_val = splits["X_val"]
         X_test = splits["X_test"]
@@ -97,7 +100,10 @@ def main():
             model_architecture=args.model_architecture,
         )
 
-    elif args.model_architecture == "attention" or args.model_architecture == "metadata_parallel":
+    elif (
+        args.model_architecture == "attention"
+        or args.model_architecture == "metadata_parallel"
+    ):
         X_train = splits["X_bact_train"]
         X_val = splits["X_bact_val"]
         X_test = splits["X_bact_test"]
@@ -112,7 +118,7 @@ def main():
             X_meta_val,
             X_meta_test,
             args.tcn_path,
-            args.lstm_path,            
+            args.lstm_path,
             args.attention_path,
             args.scaler_path,
             args.output,

@@ -89,7 +89,17 @@ def nrmse(actual, predicted, num_taxa, scaler_path):
     return nrmse_val
 
 
-def combine_metrics(X_train, X_test, y_train, y_test, predict_train, predict_test, output_path, scaler_path, model_architecture=None):
+def combine_metrics(
+    X_train,
+    X_test,
+    y_train,
+    y_test,
+    predict_train,
+    predict_test,
+    output_path,
+    scaler_path,
+    model_architecture=None,
+):
     """Compute common metrics for train and test sets and optionally save to TSV.
 
     Parameters

@@ -61,7 +61,10 @@ def main():
 
     logger.info("Loading prediction results from %s", args.prediction_results)
     predictions = np.load(args.prediction_results)
-    if args.model_architecture != "attention" and args.model_architecture != "metadata_parallel":
+    if (
+        args.model_architecture != "attention"
+        and args.model_architecture != "metadata_parallel"
+    ):
         y_pred_train = predictions["pred_train"]
         y_pred_val = predictions["pred_val"]
         y_pred_test = predictions["pred_test"]
@@ -75,8 +78,11 @@ def main():
         y_test = actual["y_test"]
         X_train = None
         X_test = None
-    
-    elif args.model_architecture == "attention" or args.model_architecture == "metadata_parallel":
+
+    elif (
+        args.model_architecture == "attention"
+        or args.model_architecture == "metadata_parallel"
+    ):
         actual = np.load(args.splits)
         X_train = actual["X_bact_train"]
         X_test = actual["X_bact_test"]
@@ -89,7 +95,15 @@ def main():
         y_test = actual["y_test"]
 
     evaluation_metrics = combine_metrics(
-        X_train, X_test, y_train, y_test, y_pred_train, y_pred_test, args.output, args.scaler_path, args.model_architecture
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        y_pred_train,
+        y_pred_test,
+        args.output,
+        args.scaler_path,
+        args.model_architecture,
     )
 
 

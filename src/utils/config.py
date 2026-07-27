@@ -23,14 +23,18 @@ def reshape(predictions):
     reshaped = predictions.reshape(predictions.shape[0], predictions.shape[2])
     return reshaped
 
+
 def reshape_attention(predictions, original, num_taxa):
     array = []
     for i in range(predictions.shape[1]):
         liste = predictions[:, i].reshape(-1, 1)
         array.append(liste)
-    predictions_reshaped = np.concatenate((array),axis=1)
+    predictions_reshaped = np.concatenate((array), axis=1)
     predictions_reshaped = predictions.reshape(predictions.shape[0], num_taxa)
-    predictions_concat = np.concatenate([predictions_reshaped, original.reshape(original.shape[0],original.shape[2])], axis=1)
+    predictions_concat = np.concatenate(
+        [predictions_reshaped, original.reshape(original.shape[0], original.shape[2])],
+        axis=1,
+    )
     return predictions_concat
 
 

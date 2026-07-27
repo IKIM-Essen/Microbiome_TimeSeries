@@ -70,9 +70,15 @@ def split_data(
             else:
                 X_test = split_array
 
-    X_train = X_train.reshape(X_train.shape[0], window_length, X_train.shape[1] // window_length)
-    X_val = X_val.reshape(X_val.shape[0], window_length, X_val.shape[1] // window_length)
-    X_test = X_test.reshape(X_test.shape[0], window_length, X_test.shape[1] // window_length)
+    X_train = X_train.reshape(
+        X_train.shape[0], window_length, X_train.shape[1] // window_length
+    )
+    X_val = X_val.reshape(
+        X_val.shape[0], window_length, X_val.shape[1] // window_length
+    )
+    X_test = X_test.reshape(
+        X_test.shape[0], window_length, X_test.shape[1] // window_length
+    )
     logger.info(
         "Split sizes X_train=%s y_train=%s X_val=%s y_val=%s X_test=%s y_test=%s",
         X_train.shape,
@@ -135,29 +141,33 @@ def split_without_scaling(
 
     return X_train, y_train, X_val, y_val, X_test, y_test
 
+
 def split_indices(n_samples, train_percentage=0.7, val_percentage=0.1):
     train_end = int(n_samples * train_percentage)
     val_end = int(n_samples * (train_percentage + val_percentage))
-    
+
     idx_train = np.arange(0, train_end)
-    idx_val   = np.arange(train_end, val_end)
-    idx_test  = np.arange(val_end, n_samples)
-    
+    idx_val = np.arange(train_end, val_end)
+    idx_test = np.arange(val_end, n_samples)
+
     return idx_train, idx_val, idx_test
 
-def split_data_attention(complete, num_taxa, scaler_path, metadata_woT, train_percentage, val_percentage):
-    lag_targets =3
+
+def split_data_attention(
+    complete, num_taxa, scaler_path, metadata_woT, train_percentage, val_percentage
+):
+    lag_targets = 3
     logger.info("Splitting data for %s taxa", num_taxa)
-    metadata_woT = metadata_woT.drop(['Time'], axis=1)
+    metadata_woT = metadata_woT.drop(["Time"], axis=1)
     metadata_woT = metadata_woT.fillna(0)
     complete = complete.dropna()
     for y in range(num_taxa):
         for i in range(1, 4):
-            complete[f'Target{y+1}_Lag_{i}'] = complete[f'Target{y+1}'].shift(i)
+            complete[f"Target{y+1}_Lag_{i}"] = complete[f"Target{y+1}"].shift(i)
             lag_targets += 1
     complete = complete.fillna(0)
     scaled_data, scaler = scale_date(complete, scaler_path)
-    X_bact = scaled_data[:, num_taxa:(num_taxa + lag_targets)]
+    X_bact = scaled_data[:, num_taxa : (num_taxa + lag_targets)]
     X_bact = X_bact.reshape(X_bact.shape[0], 1, X_bact.shape[1])
 
     # Convert metadata to numpy and reshape for time dimension
@@ -165,28 +175,40 @@ def split_data_attention(complete, num_taxa, scaler_path, metadata_woT, train_pe
     X_meta = X_meta.reshape(X_meta.shape[0], 1, X_meta.shape[1])
 
     # Ensure bacterial data is numeric
-    X_bact = scaled_data[:, num_taxa:(num_taxa + lag_targets)]
+    X_bact = scaled_data[:, num_taxa : (num_taxa + lag_targets)]
     X_bact = X_bact.reshape(X_bact.shape[0], 1, X_bact.shape[1])
 
     # Ensure target is numeric
     y = scaled_data[:, 0:num_taxa]
 
     # Generate indices
-    idx_train, idx_val, idx_test = split_indices(len(X_bact), train_percentage, val_percentage)
+    idx_train, idx_val, idx_test = split_indices(
+        len(X_bact), train_percentage, val_percentage
+    )
 
     # Split bacterial data
     X_bact_train = X_bact[idx_train]
-    X_bact_val   = X_bact[idx_val]
-    X_bact_test  = X_bact[idx_test]
+    X_bact_val = X_bact[idx_val]
+    X_bact_test = X_bact[idx_test]
 
     # Split metadata
     X_meta_train = X_meta[idx_train]
-    X_meta_val   = X_meta[idx_val]
-    X_meta_test  = X_meta[idx_test]
+    X_meta_val = X_meta[idx_val]
+    X_meta_test = X_meta[idx_test]
 
     # Split targets
     y_train = y[idx_train]
-    y_val   = y[idx_val]
-    y_test  = y[idx_test]
+    y_val = y[idx_val]
+    y_test = y[idx_test]
 
-    return X_bact_train, y_train, X_bact_val, y_val, X_bact_test, y_test, X_meta_train, X_meta_val, X_meta_test
+    return (
+        X_bact_train,
+        y_train,
+        X_bact_val,
+        y_val,
+        X_bact_test,
+        y_test,
+        X_meta_train,
+        X_meta_val,
+        X_meta_test,
+    )

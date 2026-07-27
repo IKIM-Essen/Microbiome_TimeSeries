@@ -6,7 +6,12 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, get_scorer_names
+from sklearn.metrics import (
+    mean_squared_error,
+    r2_score,
+    mean_absolute_error,
+    get_scorer_names,
+)
 from keras.models import Sequential
 from keras.layers import LSTM, Dropout, Dense, Conv1D, MaxPooling1D, Embedding
 import matplotlib.pyplot as plt
@@ -38,7 +43,21 @@ from src.model_building.create_models import (
 )
 
 
-def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_train, X_meta_val, X_meta_test, Ytest, scaler_path, species, tcn_path):
+def predict_interval(
+    number_models,
+    Xtrain,
+    Ytrain,
+    Xval,
+    Yval,
+    Xtest,
+    X_meta_train,
+    X_meta_val,
+    X_meta_test,
+    Ytest,
+    scaler_path,
+    species,
+    tcn_path,
+):
     # make predictions
 
     ensemble = []
@@ -46,16 +65,17 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
     yhat_list = []
     for i in range(number_models):
         # define and fit the model on the training set
-        tcn_model,lstm_model, meta_model = fit_model(
-                Xtrain,
-                Ytrain,
-                Xval,
-                Yval,
-                Xtrain.shape[2],
-                tcn_path,
-                save_model=False,
-                X_meta_train=X_meta_train,
-                X_meta_val=X_meta_val,)
+        tcn_model, lstm_model, meta_model = fit_model(
+            Xtrain,
+            Ytrain,
+            Xval,
+            Yval,
+            Xtrain.shape[2],
+            tcn_path,
+            save_model=False,
+            X_meta_train=X_meta_train,
+            X_meta_val=X_meta_val,
+        )
 
         def ensemble_predict(X):
             y_tcn = tcn_model.predict(X)
@@ -73,11 +93,13 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
 
         meta_val_reshape = reshape_attention(meta_val, Xval, Yval.shape[1])
 
-        meta_val_res = inverse_scale_data_attention(meta_val_reshape, scaler_path, Yval.shape[1])
+        meta_val_res = inverse_scale_data_attention(
+            meta_val_reshape, scaler_path, Yval.shape[1]
+        )
 
-        y_val_tcn = (y_val_tcn + meta_val_res)/2
+        y_val_tcn = (y_val_tcn + meta_val_res) / 2
 
-        yhat = y_val_tcn[:Yval.shape[1]]
+        yhat = y_val_tcn[: Yval.shape[1]]
         ensemble.append(yhat)
         yhat_species = []
         y = 0
@@ -104,8 +126,8 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
     # -- In case of non-distributional use --
     # For asymmetric intervals compute quantiles of residuals:
     alpha = 0.05
-    q_low = np.quantile(residuals, alpha/2, axis=0)       # e.g. 0.025 quantile
-    q_high = np.quantile(residuals, 1 - alpha/2, axis=0) 
+    q_low = np.quantile(residuals, alpha / 2, axis=0)  # e.g. 0.025 quantile
+    q_high = np.quantile(residuals, 1 - alpha / 2, axis=0)
 
     # Widths relative to mean
     lower_width = np.abs(q_low)
@@ -142,7 +164,6 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
     std_total = np.sqrt(total_variance)
     """
 
-
     print("ensemble model shape")
     for i in range(number_models):
         predictions_test = ensemble_predict(Xtest)
@@ -150,8 +171,9 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
         meta_test = meta_model.predict(X_meta_test)
 
         meta_test_reshape = reshape_attention(meta_test, Xtest, Ytest.shape[1])
-        meta_test_reshape = inverse_scale_data_attention(meta_test_reshape, scaler_path, Ytest.shape[1])
-
+        meta_test_reshape = inverse_scale_data_attention(
+            meta_test_reshape, scaler_path, Ytest.shape[1]
+        )
 
         """
         array = []
@@ -162,14 +184,18 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
         predictions_reshaped = np.concatenate((array),axis=1)
         """
 
-        y_test_tcn = predictions_test.reshape(predictions_test.shape[0],predictions_test.shape[2])
+        y_test_tcn = predictions_test.reshape(
+            predictions_test.shape[0], predictions_test.shape[2]
+        )
 
         y_test_tcn = reshape_attention(y_test_tcn, Xtest, Ytest.shape[1])
-        predictions_reshaped = inverse_scale_data_attention(y_test_tcn, scaler_path, Yval.shape[1])
+        predictions_reshaped = inverse_scale_data_attention(
+            y_test_tcn, scaler_path, Yval.shape[1]
+        )
 
-        predictions_reshaped = (predictions_reshaped-meta_test_reshape)/2
+        predictions_reshaped = (predictions_reshaped - meta_test_reshape) / 2
         print(len(species))
-        yhat = predictions_reshaped[:len(species)]
+        yhat = predictions_reshaped[: len(species)]
         ensemble_2.append(yhat)
     stacked_2 = np.stack(ensemble_2, axis=0)
     mean_prediction_2 = np.mean(stacked_2, axis=0)
@@ -178,15 +204,15 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
     i = 0
     while i < len(species):
         list_error = []
-        list_lower = [np.nan]*Xtrain.shape[1]
-        #print(len(list_lower)) =27
-        list_upper = [np.nan]*Xtrain.shape[1]
-        list_mean = [np.nan]*Xtrain.shape[1]
+        list_lower = [np.nan] * Xtrain.shape[1]
+        # print(len(list_lower)) =27
+        list_upper = [np.nan] * Xtrain.shape[1]
+        list_mean = [np.nan] * Xtrain.shape[1]
         y = 0
         while y < mean_prediction_2.shape[1]:
-            #print(mean_prediction_2.shape[1])
-            #lower = mean_prediction_2[i][y] - std_total[i] * z
-            #upper = mean_prediction_2[i][y] + std_total[i] * z
+            # print(mean_prediction_2.shape[1])
+            # lower = mean_prediction_2[i][y] - std_total[i] * z
+            # upper = mean_prediction_2[i][y] + std_total[i] * z
             lower = mean_prediction_2[i][y] - lower_width[i]
             upper = mean_prediction_2[i][y] + upper_width[i]
             mean = mean_prediction_2[i][y]
@@ -196,19 +222,19 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
             list_mean.append(mean)
             y += 1
         # Find first non-nan index
-        #first_valid = np.argmax(~np.isnan(list_upper))
+        # first_valid = np.argmax(~np.isnan(list_upper))
         # Slice from there
-        #list_upper = list_upper[first_valid:]
+        # list_upper = list_upper[first_valid:]
         list_error.append(list_upper)
 
-        #first_valid = np.argmax(~np.isnan(list_lower))
+        # first_valid = np.argmax(~np.isnan(list_lower))
         # Slice from there
-        #list_lower = list_lower[first_valid:]
+        # list_lower = list_lower[first_valid:]
         list_error.append(list_lower)
 
-        #first_valid = np.argmax(~np.isnan(list_mean))
+        # first_valid = np.argmax(~np.isnan(list_mean))
         # Slice from there
-        #list_mean = list_mean[first_valid:]
+        # list_mean = list_mean[first_valid:]
         list_error.append(list_mean)
         list_yhat.append(list_error)
         i += 1
