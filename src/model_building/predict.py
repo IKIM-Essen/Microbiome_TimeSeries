@@ -78,10 +78,6 @@ def predict(
         tcn = load_model_if_path(tcn_path)
         lstm = load_model_if_path(lstm_path)
         meta = load_model_if_path(attention_path)
-        print(X_train.shape)
-        print(X_val.shape)
-        print(X_test.shape)
-        print(X_meta_train.shape)
         pred_train = ensemble_predict(tcn, lstm, X_train)
         pred_val = ensemble_predict(tcn, lstm, X_val)
         pred_test = ensemble_predict(tcn, lstm, X_test)
@@ -105,7 +101,6 @@ def predict(
             raise ValueError(
                 "No model found for prediction: provide tcn_path or lstm_path"
             )
-    print(output_path)
     if output_path:
         output_dir = os.path.dirname(output_path)
         if output_dir:

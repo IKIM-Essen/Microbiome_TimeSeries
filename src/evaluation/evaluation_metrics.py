@@ -39,8 +39,6 @@ def mae(actual, predicted, num_taxa, scaler_path):
     """
     # Inverse scale inputs back to the original space before computing metrics
     print("Scaling")
-    print(predicted.shape)
-    print(num_taxa)
     inverse = inverse_scale_data_attention(predicted, scaler_path, num_taxa)
     actual_inv = inverse_scale_data_attention(actual, scaler_path, num_taxa)
     value = mean_absolute_error(actual_inv, inverse)
@@ -65,8 +63,6 @@ def rmse(actual, predicted, num_taxa, scaler_path):
     """
     inverse = inverse_scale_data_attention(predicted, scaler_path, num_taxa)
     actual_inv = inverse_scale_data_attention(actual, scaler_path, num_taxa)
-    print("actual")
-    print(actual.shape[1])
     value = math.sqrt(mean_squared_error(actual_inv, inverse))
     logger.info("RMSE computed: %f", value)
     return value
@@ -108,7 +104,6 @@ def combine_metrics(X_train, X_test, y_train, y_test, predict_train, predict_tes
     num_taxa = y_train.shape[1]
 
     if model_architecture == "attention" or model_architecture == "metadata_parallel":
-        print("Yes")
         predict_train = reshape_attention(predict_train, X_train, y_train.shape[1])
         predict_test = reshape_attention(predict_test, X_test, y_test.shape[1])
         y_train = reshape_original_attention(y_train, X_train)

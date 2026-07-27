@@ -30,11 +30,7 @@ def scale_date(complete, scaler_path="results/models/scaler.pkl"):
     # Normalize the data
     scaler = MinMaxScaler(feature_range=(0, 1))
     complete_woT = complete.drop(["Time"], axis=1)
-    print("Shape"+str(complete_woT.shape))
     scaled_data = scaler.fit_transform(complete_woT)
-    print(scaler.n_features_in_)
-    print(scaler.min_.shape)
-    print(scaler.scale_.shape)
     dump(scaler, open(str(scaler_path) + "/scaler.pkl", "wb"))
     logger.info("Scaled data shape %s and saved scaler", scaled_data.shape)
     return scaled_data, scaler
@@ -55,18 +51,14 @@ def scale_data_with_scaler(
 
 def inverse_scale_data(scaled_data, scaler_path):
     logger.info("Inversely scaling data with scaler %s", scaler_path)
-    print(scaler_path)
     scaler = load(open(str(scaler_path)+"/scaler.pkl", "rb")) #+"/scaler.pkl"
-    print(scaler.n_features_in_)
     original_data = scaler.inverse_transform(scaled_data)
     logger.info("Inversely scaled data shape %s", original_data.shape)
     return original_data
 
 def inverse_scale_data_attention(scaled_data, scaler_path, num_taxa):
     logger.info("Inversely scaling data with scaler %s", scaler_path)
-    print(scaler_path)
     scaler = load(open(str(scaler_path), "rb")) #"/scaler.pkl"
-    print(scaler.n_features_in_)
     original_data = scaler.inverse_transform(scaled_data)[:, 0:num_taxa]
     logger.info("Inversely scaled data shape %s", original_data.shape)
     return original_data

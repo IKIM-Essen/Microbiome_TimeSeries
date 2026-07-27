@@ -8,7 +8,6 @@ import numpy as np
 # Add the parent directory to sys.path so imports from src work correctly
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-print(os.getcwd())
 
 from src.model_building.create_models import fit_model
 
@@ -88,7 +87,6 @@ def main():
             )
         elif args.model_architecture == "attention" or args.model_architecture == "metadata_parallel":
             splits = np.load(args.splits_input)
-            print(splits.files)
             X_train = splits["X_bact_train"]
             y_train = splits["y_train"]
             X_val = splits["X_bact_val"]

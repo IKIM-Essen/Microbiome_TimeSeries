@@ -29,15 +29,8 @@ def reshape_attention(predictions, original, num_taxa):
         liste = predictions[:, i].reshape(-1, 1)
         array.append(liste)
     predictions_reshaped = np.concatenate((array),axis=1)
-    print("Reshaping")
-    print(predictions.shape)
-    print(predictions_reshaped.shape)
-    print(original.shape)
-    print(predictions.shape)
     predictions_reshaped = predictions.reshape(predictions.shape[0], num_taxa)
-    print(predictions_reshaped.shape)
     predictions_concat = np.concatenate([predictions_reshaped, original.reshape(original.shape[0],original.shape[2])], axis=1)
-    print(predictions_concat.shape)
     return predictions_concat
 
 

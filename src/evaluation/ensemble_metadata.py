@@ -44,13 +44,8 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
     ensemble = []
     ensemble_2 = []
     yhat_list = []
-    #print(Xval.shape)
     for i in range(number_models):
         # define and fit the model on the training set
-        #model = keras.models.load_model("1LayerLSTM.h5")
-        #print(X_train)
-        #print(y_train)
-        #yhat_list = []
         tcn_model,lstm_model, meta_model = fit_model(
                 Xtrain,
                 Ytrain,
@@ -70,58 +65,27 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
         # Make predictions on the test set
         predictions_val = ensemble_predict(Xval)
 
-        #y_val_tcn = predictions_val.reshape(predictions_val.shape[0],predictions_val.shape[2])
-
         y_val_tcn = reshape_attention(predictions_val, Xval, Yval.shape[1])
-        #predict_train = reshape_attention(predict_train, X_train, y_train.shape[1])
-        #predict_test = reshape_attention(predict_test, X_test, y_test.shape[1])
+
         y_val_tcn = inverse_scale_data_attention(y_val_tcn, scaler_path, Yval.shape[1])
 
-        #meta_train = meta_model.predict(X_meta_train)
         meta_val = meta_model.predict(X_meta_val)
-        #meta_test = meta_model.predict(X_meta_test)
 
-        #meta_train_reshape = meta_train.reshape(meta_train.shape[0], meta_train.shape[2])
         meta_val_reshape = reshape_attention(meta_val, Xval, Yval.shape[1])
-        #meta_test_reshape = meta_test.reshape(meta_test.shape[0], meta_test.shape[2])
 
-        #meta_train_res = inverse_scale_data_attention(meta_train_reshape, scaler_path,species)
         meta_val_res = inverse_scale_data_attention(meta_val_reshape, scaler_path, Yval.shape[1])
-        #meta_test_res = scaler.inverse_transform(meta_test_reshape)
 
-        #train_complete = (y_tcn_pred + meta_train_res)/2
         y_val_tcn = (y_val_tcn + meta_val_res)/2
-        #y_test_tcn = (y_test_tcn + meta_test_res)/2
 
-        """
-        array = []
-        for i in range(predictions_val.shape[1]):
-            liste = predictions_val[:, i].reshape(-1, 1)
-            array.append(liste)
-        #print(len(array))
-        predictions_reshaped = np.concatenate((array),axis=1)
-        #print(predictions_reshaped.shape)
-        #print(predictions_reshaped.shape)
-        predictions_reshaped = np.concatenate((predictions_reshaped,Xval.reshape(Xval.shape[0],Xval.shape[2])), axis=1)
-        predictions_reshaped = scaler.inverse_transform(predictions_reshaped)[:, 0:species]
-        """
-        #print(predictions_reshaped.shape)
         yhat = y_val_tcn[:Yval.shape[1]]
         ensemble.append(yhat)
-        #print(yhat)
         yhat_species = []
         y = 0
-        #print(len(yhat[1]))
         while y < len(yhat[1]):
             lst2 = [item[y] for item in yhat]
             yhat_species.append(lst2)
             y += 1
         yhat_list.append(yhat_species)
-    #print(len(ensemble))
-    #print(ensemble[1].shape)
-    #print(yhat.shape)
-    #print(len(yhat_list))
-    #print(len(yhat_list[1]))
 
     stacked = np.stack(ensemble, axis=0)
     # Reshape to (3*14, 1544)
@@ -130,11 +94,7 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
     # Variance over timepoints and repetitions
     feature_variance = np.var(reshaped, axis=0, ddof=1)  # shape: (1544,)
 
-    #print(feature_variance.shape)
-
     mean_prediction = np.mean(stacked, axis=0)
-    #print("mean_prediction shape")
-    #print(mean_prediction.shape)
     residuals = mean_prediction - Yval
     # -- In case of standard deviation use ---
     mse = np.mean(residuals**2, axis=0)
@@ -181,33 +141,17 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
     total_variance = feature_variance + var_residual
     std_total = np.sqrt(total_variance)
     """
-    #print(len(std_total))
+
 
     print("ensemble model shape")
     for i in range(number_models):
-        # define and fit the model on the training set
-        #model = keras.models.load_model("1LayerLSTM.h5")
-        #print(X_train)
-        #print(y_train)
-        #yhat_list = []
-        #predictions_test = model.predict(Xtest)
-        #print(Xtest.shape)
         predictions_test = ensemble_predict(Xtest)
-        #predictions_train = ensemble_predict(X_train)
+
         meta_test = meta_model.predict(X_meta_test)
 
         meta_test_reshape = reshape_attention(meta_test, Xtest, Ytest.shape[1])
-        #meta_test_reshape = meta_test.reshape(meta_test.shape[0], meta_test.shape[2])
-
-        #meta_train_res = inverse_scale_data_attention(meta_train_reshape, scaler_path,species)
         meta_test_reshape = inverse_scale_data_attention(meta_test_reshape, scaler_path, Ytest.shape[1])
 
-        #meta_test_reshape = meta_test.reshape(meta_test.shape[0], meta_test.shape[2])
-
-        #y_tcn_pred = predictions_train.reshape(predictions_train.shape[0],predictions_train.shape[2])
-
-        #y_test_tcn = scaler.inverse_transform(y_test_tcn)
-        #y_tcn_pred = scaler.inverse_transform(y_tcn_pred)
 
         """
         array = []
@@ -217,31 +161,20 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
         #print(len(array))
         predictions_reshaped = np.concatenate((array),axis=1)
         """
-        #print(predictions_reshaped.shape)
-        #print(predictions_reshaped.shape)
+
         y_test_tcn = predictions_test.reshape(predictions_test.shape[0],predictions_test.shape[2])
 
         y_test_tcn = reshape_attention(y_test_tcn, Xtest, Ytest.shape[1])
-        #predict_train = reshape_attention(predict_train, X_train, y_train.shape[1])
-        #predict_test = reshape_attention(predict_test, X_test, y_test.shape[1])
         predictions_reshaped = inverse_scale_data_attention(y_test_tcn, scaler_path, Yval.shape[1])
-
-        #predictions_reshaped = np.concatenate((y_test_tcn,Xtest.reshape(Xtest.shape[0],Xtest.shape[2])), axis=1)
-        #predictions_reshaped = scaler.inverse_transform(y_test_tcn)
-        #print(predictions_reshaped.shape)
 
         predictions_reshaped = (predictions_reshaped-meta_test_reshape)/2
         print(len(species))
         yhat = predictions_reshaped[:len(species)]
         ensemble_2.append(yhat)
-    #print(len(ensemble_2[0]))
     stacked_2 = np.stack(ensemble_2, axis=0)
     mean_prediction_2 = np.mean(stacked_2, axis=0)
-    #print(mean_prediction_2.shape)
     mean_prediction_2 = np.swapaxes(mean_prediction_2, 0, 1)
-    #print(mean_prediction_2.shape)
     list_yhat = []
-    #print(species)
     i = 0
     while i < len(species):
         list_error = []
@@ -278,16 +211,5 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
         #list_mean = list_mean[first_valid:]
         list_error.append(list_mean)
         list_yhat.append(list_error)
-        #print(list_error)
-        #print(y)
         i += 1
-        #print(i)
-    #print(i)
-    print("New")
-    #print(len(list_error))
-    print(len(list_yhat))
-    print(len(list_yhat[1]))
-    print(len(list_yhat[1][1]))
-    print(list_yhat[1][1])
-    print(list_yhat[1][1][1])
     return list_yhat

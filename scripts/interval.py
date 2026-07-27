@@ -10,7 +10,6 @@ import pandas as pd
 # Add the parent directory to sys.path to enable importing from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-print(os.getcwd())
 
 from src.evaluation.ensemble import predict_interval
 from src.evaluation.ensemble_metadata import predict_interval as predict_interval_metadata
@@ -96,7 +95,6 @@ def main():
     logger.info("Starting evaluation with arguments: %s", args)
 
     if args.model_architecture != "attention" and args.model_architecture != "metadata_parallel":
-        print("Hey")
         logger.info("Loading splits from %s", args.splits_input)
         splits = np.load(args.splits_input)
         X_train = splits["X_train"]
@@ -131,7 +129,6 @@ def main():
         )
 
     elif args.model_architecture == "attention" or args.model_architecture == "metadata_parallel":
-        print("Hello")
         logger.info("Loading splits from %s", args.splits_input)
         splits = np.load(args.splits_input)
         X_train = splits["X_bact_train"]

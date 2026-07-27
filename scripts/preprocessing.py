@@ -8,7 +8,6 @@ import numpy as np
 # Add the parent directory to sys.path to enable importing from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-print(os.getcwd())
 
 from src.preprocessing.read import create_complete_df
 from src.preprocessing.split import split_data, split_data_attention
@@ -146,8 +145,6 @@ def main():
             args.train_percentage,
             args.val_percentage,
         )
-        print("Metadata!")
-        print(X_meta_train)
         os.makedirs(os.path.dirname(args.splits_output), exist_ok=True)
         np.savez_compressed(
             args.splits_output,
@@ -166,7 +163,6 @@ def main():
         print(X_bact_train.shape, X_meta_train.shape, y_train.shape)
         print(X_bact_val.shape, X_meta_val.shape, y_val.shape)
         print(X_bact_test.shape, X_meta_test.shape, y_test.shape)
-        print("Metadata!")
         print("Data split completed!")
         print(f"Saved split batches to {args.splits_output}")
 

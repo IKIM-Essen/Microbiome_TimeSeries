@@ -12,8 +12,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from src.evaluation.evaluation_metrics import combine_metrics
 
-print(os.getcwd())
-
 
 def main():
     # Configure logging
@@ -64,7 +62,6 @@ def main():
     logger.info("Loading prediction results from %s", args.prediction_results)
     predictions = np.load(args.prediction_results)
     if args.model_architecture != "attention" and args.model_architecture != "metadata_parallel":
-        print("No attention")
         y_pred_train = predictions["pred_train"]
         y_pred_val = predictions["pred_val"]
         y_pred_test = predictions["pred_test"]
@@ -80,7 +77,6 @@ def main():
         X_test = None
     
     elif args.model_architecture == "attention" or args.model_architecture == "metadata_parallel":
-        print("attention")
         actual = np.load(args.splits)
         X_train = actual["X_bact_train"]
         X_test = actual["X_bact_test"]

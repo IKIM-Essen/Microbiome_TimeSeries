@@ -338,13 +338,11 @@ def fit_model(
         
         elif model_type == "metadata_parallel":
             # Build models and compile them for regression
-            print("Hurra1")
             tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
             tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
             lstm_model = build_lstm((time_steps, num_features), num_targets, horizon)
             lstm_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
             logger.info("Models built and compiled successfully")
-            print("Hurra2")
             # --- Train TCN first ---
             logger.info("Starting TCN model training")
             tcn_model.fit(
@@ -355,7 +353,6 @@ def fit_model(
                 validation_data=(X_val, y_val),
             )
             logger.info("TCN model training completed")
-            print("Hurra3")
             # --- Compute residuals ---
             # Residuals are the difference between the true target and the TCN prediction.
             logger.info("Computing residuals for LSTM training")
@@ -378,15 +375,11 @@ def fit_model(
                 callbacks=[es],
             )
             logger.info("LSTM model training completed")
-            print("Hurra4")
             # --- Train LSTM on metadata ---
-            print(X_meta_train)
             metadata_model = build_lstm((time_steps, X_meta_train.shape[2]), num_targets, horizon)
             metadata_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
-            print("yes")
             logger.info("Training separate LSTM on metadata")
             es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=10)
-            print("yes")
             metadata_model.fit(
                 X_meta_train,
                 y_train,
@@ -395,9 +388,7 @@ def fit_model(
                 validation_data=(X_meta_val, y_val),
                 callbacks=[es],
             )
-            print("yes")
             logger.info("LSTM model training completed")
-            print("Hurra5")
             if save_model:
                 tcn_path = os.path.join(model_path, "tcn_model.h5")
                 lstm_path = os.path.join(model_path, "lstm_model.h5")

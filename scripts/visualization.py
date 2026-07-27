@@ -6,7 +6,6 @@ import sys
 # Add the parent directory to sys.path to enable importing from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-print(os.getcwd())
 
 from src.visualization.plot_original_timeseries import time_series_analysis_plot
 

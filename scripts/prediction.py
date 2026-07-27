@@ -8,8 +8,6 @@ import numpy as np
 # Add the parent directory to sys.path to enable importing from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-print(os.getcwd())
-
 from src.model_building.predict import predict
 
 
@@ -78,7 +76,6 @@ def main():
         "Successfully loaded splits.",
     )
     if args.model_architecture != "attention" and args.model_architecture != "metadata_parallel":
-        print("Yes")
         X_train = splits["X_train"]
         X_val = splits["X_val"]
         X_test = splits["X_test"]
@@ -101,7 +98,6 @@ def main():
         )
 
     elif args.model_architecture == "attention" or args.model_architecture == "metadata_parallel":
-        print("Hurra")
         X_train = splits["X_bact_train"]
         X_val = splits["X_bact_val"]
         X_test = splits["X_bact_test"]
