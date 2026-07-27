@@ -38,7 +38,7 @@ from src.model_building.create_models import (
 )
 
 
-def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_train, X_meta_val, X_meta_test, Ytest, scaler_path, species):
+def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_train, X_meta_val, X_meta_test, Ytest, scaler_path, species, tcn_path):
     # make predictions
 
     ensemble = []
@@ -57,7 +57,7 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
                 Xval,
                 Yval,
                 Xtrain.shape[2],
-                args.path,
+                tcn_path,
                 save_model=False,
                 X_meta_train=X_meta_train,
                 X_meta_val=X_meta_val,)
@@ -70,20 +70,23 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
         # Make predictions on the test set
         predictions_val = ensemble_predict(Xval)
 
-        y_val_tcn = predictions_val.reshape(predictions_val.shape[0],predictions_val.shape[2])
+        #y_val_tcn = predictions_val.reshape(predictions_val.shape[0],predictions_val.shape[2])
 
-        y_val_tcn = inverse_scale_data_attention(y_val_tcn, scaler_path,species)
+        y_val_tcn = reshape_attention(predictions_val, Xval, Yval.shape[1])
+        #predict_train = reshape_attention(predict_train, X_train, y_train.shape[1])
+        #predict_test = reshape_attention(predict_test, X_test, y_test.shape[1])
+        y_val_tcn = inverse_scale_data_attention(y_val_tcn, scaler_path, Yval.shape[1])
 
-        meta_train = meta_model.predict(X_meta_train)
+        #meta_train = meta_model.predict(X_meta_train)
         meta_val = meta_model.predict(X_meta_val)
         #meta_test = meta_model.predict(X_meta_test)
 
-        meta_train_reshape = meta_train.reshape(meta_train.shape[0], meta_train.shape[2])
-        meta_val_reshape = meta_val.reshape(meta_val.shape[0], meta_val.shape[2])
+        #meta_train_reshape = meta_train.reshape(meta_train.shape[0], meta_train.shape[2])
+        meta_val_reshape = reshape_attention(meta_val, Xval, Yval.shape[1])
         #meta_test_reshape = meta_test.reshape(meta_test.shape[0], meta_test.shape[2])
 
-        meta_train_res = inverse_scale_data_attention(meta_train_reshape, scaler_path,species)
-        meta_val_res = inverse_scale_data_attention(meta_val_reshape, scaler_path,species)
+        #meta_train_res = inverse_scale_data_attention(meta_train_reshape, scaler_path,species)
+        meta_val_res = inverse_scale_data_attention(meta_val_reshape, scaler_path, Yval.shape[1])
         #meta_test_res = scaler.inverse_transform(meta_test_reshape)
 
         #train_complete = (y_tcn_pred + meta_train_res)/2
@@ -103,7 +106,7 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
         predictions_reshaped = scaler.inverse_transform(predictions_reshaped)[:, 0:species]
         """
         #print(predictions_reshaped.shape)
-        yhat = y_val_tcn[:species]
+        yhat = y_val_tcn[:Yval.shape[1]]
         ensemble.append(yhat)
         #print(yhat)
         yhat_species = []
@@ -192,7 +195,14 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
         predictions_test = ensemble_predict(Xtest)
         #predictions_train = ensemble_predict(X_train)
         meta_test = meta_model.predict(X_meta_test)
-        meta_test_reshape = meta_test.reshape(meta_test.shape[0], meta_test.shape[2])
+
+        meta_test_reshape = reshape_attention(meta_test, Xtest, Ytest.shape[1])
+        #meta_test_reshape = meta_test.reshape(meta_test.shape[0], meta_test.shape[2])
+
+        #meta_train_res = inverse_scale_data_attention(meta_train_reshape, scaler_path,species)
+        meta_test_reshape = inverse_scale_data_attention(meta_test_reshape, scaler_path, Ytest.shape[1])
+
+        #meta_test_reshape = meta_test.reshape(meta_test.shape[0], meta_test.shape[2])
 
         #y_tcn_pred = predictions_train.reshape(predictions_train.shape[0],predictions_train.shape[2])
 
@@ -210,13 +220,19 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
         #print(predictions_reshaped.shape)
         #print(predictions_reshaped.shape)
         y_test_tcn = predictions_test.reshape(predictions_test.shape[0],predictions_test.shape[2])
+
+        y_test_tcn = reshape_attention(y_test_tcn, Xtest, Ytest.shape[1])
+        #predict_train = reshape_attention(predict_train, X_train, y_train.shape[1])
+        #predict_test = reshape_attention(predict_test, X_test, y_test.shape[1])
+        predictions_reshaped = inverse_scale_data_attention(y_test_tcn, scaler_path, Yval.shape[1])
+
         #predictions_reshaped = np.concatenate((y_test_tcn,Xtest.reshape(Xtest.shape[0],Xtest.shape[2])), axis=1)
-        predictions_reshaped = scaler.inverse_transform(y_test_tcn)
+        #predictions_reshaped = scaler.inverse_transform(y_test_tcn)
         #print(predictions_reshaped.shape)
 
         predictions_reshaped = (predictions_reshaped-meta_test_reshape)/2
-
-        yhat = predictions_reshaped[:species]
+        print(len(species))
+        yhat = predictions_reshaped[:len(species)]
         ensemble_2.append(yhat)
     #print(len(ensemble_2[0]))
     stacked_2 = np.stack(ensemble_2, axis=0)
@@ -227,7 +243,7 @@ def predict_interval(number_models, Xtrain, Ytrain, Xval, Yval, Xtest, X_meta_tr
     list_yhat = []
     #print(species)
     i = 0
-    while i < species:
+    while i < len(species):
         list_error = []
         list_lower = [np.nan]*Xtrain.shape[1]
         #print(len(list_lower)) =27

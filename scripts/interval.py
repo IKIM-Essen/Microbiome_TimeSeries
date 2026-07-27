@@ -167,7 +167,8 @@ def main():
             X_meta_test, 
             y_test, 
             args.scaler, 
-            species
+            species,
+            args.tcn_path,
         )
 
     # Ensure output directory exists
