@@ -8,7 +8,6 @@ import numpy as np
 # Add the parent directory to sys.path to enable importing from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-print(os.getcwd())
 
 from src.model_building.retraining_models import retrain_model
 from src.visualization.plot_results import plot_taxa_dropdown

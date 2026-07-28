@@ -8,8 +8,6 @@ import numpy as np
 # Add the parent directory to sys.path to enable importing from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-print(os.getcwd())
-
 from src.model_building.predict import predict
 
 
@@ -45,6 +43,12 @@ def main():
         help="Path to the saved LSTM model file.",
     )
     parser.add_argument(
+        "--attention-path",
+        type=str,
+        default="results/models/attention_model.h5",
+        help="Path to the saved attention model file.",
+    )
+    parser.add_argument(
         "--model-architecture",
         type=str,
         default=None,
@@ -68,26 +72,58 @@ def main():
 
     logger.info("Loading splits from %s", args.splits_input)
     splits = np.load(args.splits_input)
-    X_train = splits["X_train"]
-    X_val = splits["X_val"]
-    X_test = splits["X_test"]
     logger.info(
-        "Successfully loaded splits. X_train shape: %s, X_val shape: %s, X_test shape: %s",
-        X_train.shape,
-        X_val.shape,
-        X_test.shape,
+        "Successfully loaded splits.",
     )
+    if (
+        args.model_architecture != "attention"
+        and args.model_architecture != "metadata_parallel"
+    ):
+        X_train = splits["X_train"]
+        X_val = splits["X_val"]
+        X_test = splits["X_test"]
+        X_meta_train = None
+        X_meta_val = None
+        X_meta_test = None
+        pred_train, pred_val, pred_test = predict(
+            X_train,
+            X_val,
+            X_test,
+            X_meta_train,
+            X_meta_val,
+            X_meta_test,
+            args.tcn_path,
+            args.lstm_path,
+            args.attention_path,
+            args.scaler_path,
+            args.output,
+            model_architecture=args.model_architecture,
+        )
 
-    pred_train, pred_val, pred_test = predict(
-        X_train,
-        X_val,
-        X_test,
-        args.tcn_path,
-        args.lstm_path,
-        args.scaler_path,
-        args.output,
-        model_architecture=args.model_architecture,
-    )
+    elif (
+        args.model_architecture == "attention"
+        or args.model_architecture == "metadata_parallel"
+    ):
+        X_train = splits["X_bact_train"]
+        X_val = splits["X_bact_val"]
+        X_test = splits["X_bact_test"]
+        X_meta_train = splits["X_meta_train"]
+        X_meta_val = splits["X_meta_val"]
+        X_meta_test = splits["X_meta_test"]
+        pred_train, pred_val, pred_test = predict(
+            X_train,
+            X_val,
+            X_test,
+            X_meta_train,
+            X_meta_val,
+            X_meta_test,
+            args.tcn_path,
+            args.lstm_path,
+            args.attention_path,
+            args.scaler_path,
+            args.output,
+            model_architecture=args.model_architecture,
+        )
 
     logger.info(
         "Prediction results shapes: pred_train=%s, pred_val=%s, pred_test=%s",

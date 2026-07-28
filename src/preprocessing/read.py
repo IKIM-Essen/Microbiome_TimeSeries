@@ -262,7 +262,7 @@ def create_complete_df(
         complete[f"Target{i+1}"] = tax.iloc[i].values
         dic_TargTax[f"Target{i+1}"] = tax.index[i]
     # Add metadata features to the complete dataframe if include_metadata is True
-    if include_metadata:
+    if include_metadata == True:
         for col in metadata_woT.columns:
             complete[col] = metadata_woT[col].reindex(complete["Time"]).values
     # Sort the complete dataframe by the "Time" column and reset the index

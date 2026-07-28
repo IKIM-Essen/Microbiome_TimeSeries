@@ -8,10 +8,9 @@ import numpy as np
 # Add the parent directory to sys.path to enable importing from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-print(os.getcwd())
 
 from src.preprocessing.read import create_complete_df
-from src.preprocessing.split import split_data
+from src.preprocessing.split import split_data, split_data_attention
 
 
 def main():
@@ -41,7 +40,7 @@ def main():
     )
     parser.add_argument(
         "--include-metadata",
-        type=bool,
+        type=str,
         default=False,
         help="Whether to include metadata in the output dataframe. Default is False.",
     )
@@ -64,6 +63,13 @@ def main():
         help="Also scale and split the complete dataset after creation.",
     )
     parser.add_argument(
+        "--model-architecture",
+        type=str,
+        default=None,
+        choices=["tcn_lstm", "lstm", "attention", "metadata_parallel"],
+        help="Model architecture used for preprocessing. Attention uses the dedicated scaling and splitting path.",
+    )
+    parser.add_argument(
         "--splits-output",
         type=str,
         default="results/intermediate/splits.npz",
@@ -81,6 +87,18 @@ def main():
         default="results/intermediate/split_sizes.pkl",
         help="Path to save the split sizes.",
     )
+    parser.add_argument(
+        "--train-percentage",
+        type=float,
+        default=0.7,
+        help="Percentage of the data that should be used for training.",
+    )
+    parser.add_argument(
+        "--val-percentage",
+        type=float,
+        default=0.1,
+        help="Percentage of the data that should be used for validation.",
+    )
 
     args = parser.parse_args()
 
@@ -93,11 +111,16 @@ def main():
         pickle.dump(dic_TargTax, mapping_file)
     print(f"Saved target taxa mapping to {args.mapping_output}")
 
-    if args.split_data:
+    if args.split_data and (
+        args.model_architecture != "attention"
+        and args.model_architecture != "metadata_parallel"
+    ):
         X_train, y_train, X_val, y_val, X_test, y_test = split_data(
             complete_df,
             number_taxa,
             args.scaler_path,
+            args.train_percentage,
+            args.val_percentage,
             args.splits_sizes,
         )
         os.makedirs(os.path.dirname(args.splits_output), exist_ok=True)
@@ -114,6 +137,49 @@ def main():
         print(f"X_train={X_train.shape}, y_train={y_train.shape}")
         print(f"X_val={X_val.shape}, y_val={y_val.shape}")
         print(f"X_test={X_test.shape}, y_test={y_test.shape}")
+        print(f"Saved split batches to {args.splits_output}")
+
+    elif args.split_data and (
+        args.model_architecture == "attention"
+        or args.model_architecture == "metadata_parallel"
+    ):
+        (
+            X_bact_train,
+            y_train,
+            X_bact_val,
+            y_val,
+            X_bact_test,
+            y_test,
+            X_meta_train,
+            X_meta_val,
+            X_meta_test,
+        ) = split_data_attention(
+            complete_df,
+            number_taxa,
+            args.scaler_path,
+            metadata,
+            args.train_percentage,
+            args.val_percentage,
+        )
+        os.makedirs(os.path.dirname(args.splits_output), exist_ok=True)
+        np.savez_compressed(
+            args.splits_output,
+            X_bact_train=X_bact_train,
+            y_train=y_train,
+            X_bact_val=X_bact_val,
+            y_val=y_val,
+            X_bact_test=X_bact_test,
+            y_test=y_test,
+            X_meta_train=X_meta_train,
+            X_meta_val=X_meta_val,
+            X_meta_test=X_meta_test,
+        )
+        print(args.include_metadata)
+        print(complete_df.head)
+        print(X_bact_train.shape, X_meta_train.shape, y_train.shape)
+        print(X_bact_val.shape, X_meta_val.shape, y_val.shape)
+        print(X_bact_test.shape, X_meta_test.shape, y_test.shape)
+        print("Data split completed!")
         print(f"Saved split batches to {args.splits_output}")
 
 

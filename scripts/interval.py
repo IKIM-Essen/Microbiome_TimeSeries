@@ -10,9 +10,11 @@ import pandas as pd
 # Add the parent directory to sys.path to enable importing from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-print(os.getcwd())
 
 from src.evaluation.ensemble import predict_interval
+from src.evaluation.ensemble_metadata import (
+    predict_interval as predict_interval_metadata,
+)
 from src.evaluation.outlier import find_interval_anomalies
 from src.utils.config import extract_species, prediction_interval_to_df
 
@@ -84,42 +86,95 @@ def main():
         default="results/tables/prediction_interval_anomalies.tsv",
         help="Path to save detected interval anomalies as TSV.",
     )
+    parser.add_argument(
+        "--model-architecture",
+        type=str,
+        default=None,
+        help="Model architecture used for prediction (tcn_lstm, lstm, attention). If omitted, reads config/profile.yaml",
+    )
 
     args = parser.parse_args()
     logger.info("Starting evaluation with arguments: %s", args)
 
-    logger.info("Loading splits from %s", args.splits_input)
-    splits = np.load(args.splits_input)
-    X_train = splits["X_train"]
-    y_train = splits["y_train"]
-    X_val = splits["X_val"]
-    y_val = splits["y_val"]
-    X_test = splits["X_test"]
-    y_test = splits["y_test"]
-    logger.info(
-        "Successfully loaded splits. X_train shape: %s, y_train shape: %s",
-        X_train.shape,
-        y_train.shape,
-    )
+    if (
+        args.model_architecture != "attention"
+        and args.model_architecture != "metadata_parallel"
+    ):
+        logger.info("Loading splits from %s", args.splits_input)
+        splits = np.load(args.splits_input)
+        X_train = splits["X_train"]
+        y_train = splits["y_train"]
+        X_val = splits["X_val"]
+        y_val = splits["y_val"]
+        X_test = splits["X_test"]
+        y_test = splits["y_test"]
+        logger.info(
+            "Successfully loaded splits. X_train shape: %s, y_train shape: %s",
+            X_train.shape,
+            y_train.shape,
+        )
 
-    df = pd.read_csv("data/taxa.tsv", header=None, index_col=None)
+        df = pd.read_csv("data/taxa.tsv", header=None, index_col=None)
 
-    species = extract_species(df)
+        species = extract_species(df)
 
-    logger.info("Computing prediction interval with %s models", args.num_models)
-    prediction_interval = predict_interval(
-        args.num_models,
-        X_train,
-        y_train,
-        X_val,
-        y_val,
-        X_test,
-        y_test,
-        args.scaler,
-        species,
-        args.tcn_path,
-        args.lstm_path,
-    )
+        logger.info("Computing prediction interval with %s models", args.num_models)
+        prediction_interval = predict_interval(
+            args.num_models,
+            X_train,
+            y_train,
+            X_val,
+            y_val,
+            X_test,
+            y_test,
+            args.scaler,
+            species,
+            args.tcn_path,
+            args.lstm_path,
+        )
+
+    elif (
+        args.model_architecture == "attention"
+        or args.model_architecture == "metadata_parallel"
+    ):
+        logger.info("Loading splits from %s", args.splits_input)
+        splits = np.load(args.splits_input)
+        X_train = splits["X_bact_train"]
+        y_train = splits["y_train"]
+        X_meta_train = splits["X_meta_train"]
+        X_val = splits["X_bact_val"]
+        y_val = splits["y_val"]
+        X_meta_val = splits["X_meta_val"]
+        X_test = splits["X_bact_test"]
+        y_test = splits["y_test"]
+        X_meta_test = splits["X_meta_test"]
+        logger.info(
+            "Successfully loaded splits. X_train shape: %s, y_train shape: %s",
+            X_train.shape,
+            y_train.shape,
+        )
+
+        df = pd.read_csv("data/taxa.tsv", header=None, index_col=None)
+
+        species = extract_species(df)
+
+        logger.info("Computing prediction interval with %s models", args.num_models)
+
+        prediction_interval = predict_interval_metadata(
+            args.num_models,
+            X_train,
+            y_train,
+            X_val,
+            y_val,
+            X_test,
+            X_meta_train,
+            X_meta_val,
+            X_meta_test,
+            y_test,
+            args.scaler,
+            species,
+            args.tcn_path,
+        )
 
     # Ensure output directory exists
     output_dir = os.path.dirname(args.output)

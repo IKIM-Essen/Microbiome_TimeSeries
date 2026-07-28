@@ -64,7 +64,10 @@ def find_interval_anomalies(
 
         target_name = f"{target_prefix}{target_idx+1}"
         actual_values = test_df[target_name].values
-
+        first_valid = np.argmax(~np.isnan(upper))
+        upper = upper[first_valid:]
+        first_valid = np.argmax(~np.isnan(lower))
+        lower = lower[first_valid:]
         if len(actual_values) != len(upper) or len(actual_values) != len(lower):
             raise ValueError(
                 f"Length mismatch for {target_name}: "
