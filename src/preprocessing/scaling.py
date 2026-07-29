@@ -59,7 +59,7 @@ def inverse_scale_data(scaled_data, scaler_path):
 
 def inverse_scale_data_attention(scaled_data, scaler_path, num_taxa):
     logger.info("Inversely scaling data with scaler %s", scaler_path)
-    scaler = load(open(str(scaler_path) +"/scaler.pkl", "rb"))  # "/scaler.pkl"
+    scaler = load(open(str(scaler_path) + "/scaler.pkl", "rb"))  # "/scaler.pkl"
     original_data = scaler.inverse_transform(scaled_data)[:, 0:num_taxa]
     logger.info("Inversely scaled data shape %s", original_data.shape)
     return original_data

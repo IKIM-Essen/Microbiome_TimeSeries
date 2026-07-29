@@ -347,7 +347,9 @@ def fit_model(
             metadata_model = build_lstm(
                 (time_steps, X_meta_train.shape[2]), num_targets, horizon
             )
-            metadata_model.compile(optimizer="adam", loss=zero_aware_loss, metrics=["mae"])
+            metadata_model.compile(
+                optimizer="adam", loss=zero_aware_loss, metrics=["mae"]
+            )
             logger.info("Training separate LSTM on metadata")
             es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=10)
             metadata_model.fit(

@@ -108,6 +108,7 @@ def validate_profile(profile, required_keys=None):
 
     return True
 
+
 @register_keras_serializable()
 def zero_aware_loss(y_true, y_pred):
     mse = tf.reduce_mean(tf.square(y_true - y_pred))
