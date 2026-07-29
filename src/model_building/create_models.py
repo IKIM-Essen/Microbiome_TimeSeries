@@ -9,7 +9,7 @@ import keras
 import tensorflow as tf
 from tensorflow.keras import layers, models
 
-from src.utils.config import load_model_if_path, load_config
+from src.utils.config import load_model_if_path, load_config, zero_aware_loss
 
 # Setup logging for model-building and training operations
 ROOT_DIR = os.path.abspath(
@@ -205,9 +205,9 @@ def fit_model(
         if model_type == "tcn_lstm":
             # Build models and compile them for regression
             tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
-            tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+            tcn_model.compile(optimizer="adam", loss=zero_aware_loss, metrics=["mae"])
             lstm_model = build_lstm((time_steps, num_features), num_targets, horizon)
-            lstm_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+            lstm_model.compile(optimizer="adam", loss=zero_aware_loss, metrics=["mae"])
             logger.info("Models built and compiled successfully")
 
             # --- Train TCN first ---
@@ -215,7 +215,7 @@ def fit_model(
             tcn_model.fit(
                 X_train,
                 y_train,
-                epochs=10,
+                epochs=100,
                 batch_size=32,
                 validation_data=(X_val, y_val),
             )
@@ -258,14 +258,14 @@ def fit_model(
             lstm = build_standalone_lstm(
                 (time_steps, num_features), num_targets, horizon
             )
-            lstm.compile(optimizer="adam", loss="mse", metrics=["mae"])
+            lstm.compile(optimizer="adam", loss=zero_aware_loss, metrics=["mae"])
             logger.info("Models built and compiled successfully")
             es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=10)
             lstm.fit(
                 X_train,
                 y_train,
                 validation_data=(X_val, y_val),
-                epochs=4,
+                epochs=100,
                 batch_size=5,
                 verbose=0,
                 callbacks=[es],
@@ -307,16 +307,16 @@ def fit_model(
         elif model_type == "metadata_parallel":
             # Build models and compile them for regression
             tcn_model = build_tcn((time_steps, num_features), num_targets, horizon)
-            tcn_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+            tcn_model.compile(optimizer="adam", loss=zero_aware_loss, metrics=["mae"])
             lstm_model = build_lstm((time_steps, num_features), num_targets, horizon)
-            lstm_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+            lstm_model.compile(optimizer="adam", loss=zero_aware_loss, metrics=["mae"])
             logger.info("Models built and compiled successfully")
             # --- Train TCN first ---
             logger.info("Starting TCN model training")
             tcn_model.fit(
                 X_train,
                 y_train,
-                epochs=10,
+                epochs=100,
                 batch_size=32,
                 validation_data=(X_val, y_val),
             )
@@ -347,7 +347,9 @@ def fit_model(
             metadata_model = build_lstm(
                 (time_steps, X_meta_train.shape[2]), num_targets, horizon
             )
-            metadata_model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+            metadata_model.compile(
+                optimizer="adam", loss=zero_aware_loss, metrics=["mae"]
+            )
             logger.info("Training separate LSTM on metadata")
             es = EarlyStopping(monitor="loss", mode="min", verbose=1, patience=10)
             metadata_model.fit(
@@ -383,7 +385,7 @@ def fit_model_retraining(X_train, y_train, X_val, y_val, tcn, lstm):
     tcn = load_model_if_path(tcn)
     lstm = load_model_if_path(lstm)
 
-    tcn.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val))
+    tcn.fit(X_train, y_train, epochs=100, batch_size=32, validation_data=(X_val, y_val))
     # --- Compute residuals ---
     y_pred_tcn_train = tcn.predict(X_train)
     residuals = y_train - y_pred_tcn_train
@@ -394,7 +396,7 @@ def fit_model_retraining(X_train, y_train, X_val, y_val, tcn, lstm):
     lstm.fit(
         X_train,
         residuals,
-        epochs=10,
+        epochs=100,
         batch_size=32,
         validation_data=(X_val, residuals_val),
     )

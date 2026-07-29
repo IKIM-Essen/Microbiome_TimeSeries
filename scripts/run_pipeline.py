@@ -204,7 +204,7 @@ def main():
         interval_output = os.path.join(tables_dir, "prediction_interval.tsv")
         anomalies_output = os.path.join(tables_dir, "prediction_interval_anomalies.tsv")
 
-        scaler_path = os.path.join(pp["model_dir"], "scaler.pkl")
+        scaler_path = os.path.join(pp["model_dir"])
 
         cmd = (
             f"python scripts/interval.py --num-models {num_models} --splits-input {pp['splits_output']} "

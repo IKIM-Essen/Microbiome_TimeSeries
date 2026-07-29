@@ -130,8 +130,13 @@ def predict_interval(
     q_high = np.quantile(residuals, 1 - alpha / 2, axis=0)
 
     # Widths relative to mean
-    lower_width = np.abs(q_low)
-    upper_width = np.abs(q_high)
+    # lower_width = np.abs(q_low)
+    # upper_width = np.abs(q_high)
+
+    min_width = 0.02
+
+    lower_width = np.maximum(np.abs(q_low), min_width)
+    upper_width = np.maximum(np.abs(q_high), min_width)
 
     print(q_low)
     print(q_high)
