@@ -2,9 +2,11 @@ import yaml
 import logging
 import os
 import keras
+import tensorflow as tf
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from tensorflow.keras.utils import register_keras_serializable
 
 
 def load_config(path):
@@ -105,3 +107,14 @@ def validate_profile(profile, required_keys=None):
         raise ValueError("Profile 'data' section must be a mapping of paths")
 
     return True
+
+@register_keras_serializable()
+def zero_aware_loss(y_true, y_pred):
+    mse = tf.reduce_mean(tf.square(y_true - y_pred))
+
+    # Smooth weighting: 1 near zero, gradually decreasing
+    weight = tf.exp(-tf.abs(y_true) / 0.05)
+
+    zero_penalty = tf.reduce_mean(weight * tf.square(y_pred))
+
+    return mse + 0.1 * zero_penalty
