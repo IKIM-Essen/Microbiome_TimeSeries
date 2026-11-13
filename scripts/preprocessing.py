@@ -182,6 +182,7 @@ def main():
             metadata,
             args.train_percentage,
             args.val_percentage,
+            args.splits_sizes,
         )
         os.makedirs(os.path.dirname(os.path.abspath(args.splits_output)), exist_ok=True)
         np.savez_compressed(

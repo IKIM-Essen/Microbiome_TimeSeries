@@ -151,7 +151,13 @@ def split_indices(n_samples, train_percentage=0.7, val_percentage=0.1):
 
 
 def split_data_attention(
-    complete, num_taxa, scaler_path, metadata_woT, train_percentage, val_percentage
+    complete,
+    num_taxa,
+    scaler_path,
+    metadata_woT,
+    train_percentage,
+    val_percentage,
+    split_sizes_path="results/intermediate/split_sizes.pkl",
 ):
     logger.info("Splitting data for %s taxa", num_taxa)
     # Keep metadata out of the bacterial branch and its scaler.
@@ -191,6 +197,12 @@ def split_data_attention(
     X_meta_train = X_meta[idx_train]
     X_meta_val = X_meta[idx_val]
     X_meta_test = X_meta[idx_test]
+
+    os.makedirs(os.path.dirname(os.path.abspath(split_sizes_path)), exist_ok=True)
+    dump(
+        {"train_size": len(idx_train), "val_size": len(idx_train) + len(idx_val)},
+        split_sizes_path,
+    )
 
     # Split targets
     y_train = y[idx_train]

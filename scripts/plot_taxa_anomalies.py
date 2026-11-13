@@ -1,15 +1,10 @@
 import argparse
 import logging
 import os
-import pickle
 import sys
-
-import pandas as pd
-import numpy as np
 
 # Add the parent directory to sys.path to enable importing from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from src.utils.config import reshape
 from src.visualization.plot_results import plot_taxa_dropdown
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -62,8 +57,14 @@ def main():
     parser.add_argument(
         "--split-sizes",
         type=str,
-        default="results/intermediate/split_sizes.pkl",
-        help="Optional pickle file containing train_size and val_size",
+        default=None,
+        help="Saved train_size and cumulative val_size boundaries; checked against predictions",
+    )
+    parser.add_argument(
+        "--scaler-path",
+        type=str,
+        default="results/models/scaler.pkl",
+        help="Full scaler filename used to restore predictions to abundance units",
     )
     parser.add_argument(
         "--output",
@@ -72,14 +73,19 @@ def main():
         help="Output HTML path",
     )
     args = parser.parse_args()
-    plot_taxa_dropdown(
-        args.complete,
-        args.dic_taxa,
-        args.anomalies,
-        args.prediction_interval,
-        args.predictions,
-        args.output,
-    )
+    try:
+        plot_taxa_dropdown(
+            args.complete,
+            args.dic_taxa,
+            args.anomalies,
+            args.prediction_interval,
+            args.predictions,
+            args.output,
+            split_sizes_path=args.split_sizes,
+            scaler_path=args.scaler_path,
+        )
+    except (ValueError, FileNotFoundError) as error:
+        parser.error(str(error))
 
 
 if __name__ == "__main__":

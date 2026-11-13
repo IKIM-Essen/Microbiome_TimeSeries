@@ -311,6 +311,8 @@ def main():
             pp["predictions_npz"],
             "--split-sizes",
             pp["split_sizes"],
+            "--scaler-path",
+            pp["scaler"],
             "--anomalies",
             pp["anomalies_output"],
             "--output",

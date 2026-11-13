@@ -6,8 +6,6 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from joblib import dump, load
 
-from src.utils.config import extract_species
-
 ROOT_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
 )

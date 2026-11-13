@@ -213,10 +213,11 @@ For the supplied profile, the runner uses `results/tcn_residual_experiment_01/` 
 | `tables/complete_df.csv` | Prepared observations with a `Time` column and numbered taxa columns such as `Target1`. | Check that dates and abundance values were assembled as expected. |
 | `intermediate/dic_TargTax.pkl` | A mapping from numbered target columns to taxonomy labels. | Connect model targets back to taxa. |
 | `intermediate/splits.npz` | Arrays used for training, validation, and testing. | Inputs to model training and prediction. |
+| `intermediate/split_sizes.pkl` | Training end and test start positions, saved for every architecture. The legacy key `val_size` is the cumulative training-plus-validation boundary. | Check that plotted predictions use the original split dates. |
 | `models/` | Saved model files and the fitted scaler. | Reuse the models and the same numerical scaling. |
 | `intermediate/predictions.npz` | Predictions for the training, validation, and test sets. | Inputs to evaluation and plotting. |
 | `tables/evaluation_metrics.tsv` | Training and test MAE, RMSE, and NRMSE. | Assess prediction errors; lower values indicate smaller errors. |
-| `tables/prediction_interval.tsv` | Per-taxon interval bounds and mean predictions, indexed by timepoint. | Examine the range estimated by the ensemble. |
+| `tables/prediction_interval.tsv` | Per-taxon interval bounds and mean predictions, with the original test sample labels in `Time` and a test-relative `timepoint` index. | Examine the range estimated by the ensemble at each test observation. |
 | `tables/prediction_interval_anomalies.tsv` | Observations outside the interval, including the taxon, time, observed value, bounds, and direction of the violation. | Identify observations for further investigation. |
 | `figures/plot_taxa_anomalies.html` | An interactive Plotly view with a taxon selector. | Open in a web browser to explore the results visually. |
 
@@ -225,6 +226,28 @@ Start with `complete_df.csv` to check the prepared data, then inspect the evalua
 Mean absolute error (MAE) measures average absolute prediction error. Root mean squared error (RMSE) gives greater weight to larger errors. Normalized RMSE (NRMSE) divides RMSE by the standard deviation of the observed values in the evaluated set. MAE and RMSE are computed after inverse scaling, so their units depend on the abundance scale supplied as input.
 
 The ensemble produces lower and upper prediction bounds for each taxon. An anomaly is an observation above the upper bound or below the lower bound in the test period. This flags a departure from the model-derived range; it does not by itself establish a biological community shift or its cause. Interpretation depends on input quality, model performance, and the interval method's assumptions and coverage.
+
+### Explore the interactive plot
+
+The plot shows observations, training predictions, validation predictions, test predictions, and any available interval bounds in the original abundance units. Use the taxon dropdown to switch both the curves and anomaly table. When no anomalies are detected, the output TSV retains its headers and the plot displays a "No anomalies" table.
+
+The runner supplies the prepared table, taxa mapping, predictions, scaler, split boundaries, and interval outputs to the plotter. For a standalone call, supply paths from the same experiment:
+
+```bash
+python scripts/plot_taxa_anomalies.py \
+  --complete results/my_experiment/tables/complete_df.csv \
+  --dic-taxa results/my_experiment/intermediate/dic_TargTax.pkl \
+  --predictions results/my_experiment/intermediate/predictions.npz \
+  --scaler-path results/my_experiment/models/scaler.pkl \
+  --split-sizes results/my_experiment/intermediate/split_sizes.pkl \
+  --prediction-interval results/my_experiment/tables/prediction_interval.tsv \
+  --anomalies results/my_experiment/tables/prediction_interval_anomalies.tsv \
+  --output results/my_experiment/figures/plot_taxa_anomalies.html
+```
+
+The scaler is required to restore saved predictions to abundance units. `--split-sizes` is optional for standalone plotting because split boundaries can be inferred from prediction array lengths; when provided, the saved boundaries are checked against those lengths. Prediction rows must cover the prepared observations exactly.
+
+New interval tables carry explicit `Time` labels. Legacy interval tables without `Time` use the test boundary from predictions or the split-size file. Only surplus leading NaN padding is removed; gaps within the test period keep their original positions. Mismatched lengths or sample labels produce an error instead of shifting curves to the end of the time series. Regenerate inconsistent interval outputs before plotting them.
 
 ## Script reference
 
