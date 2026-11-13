@@ -146,7 +146,13 @@ The profile also contains training and validation proportions and a retraining s
 
 ## Run pipeline stages
 
-Use `scripts/run_pipeline.py` to build stage commands from the profile. Stage selection is currently required. For example, to preprocess the input files:
+Use `scripts/run_pipeline.py` to build stage commands from the profile. With no stage selection, the runner executes all six standard stages in order:
+
+```bash
+python scripts/run_pipeline.py
+```
+
+To run only preprocessing:
 
 ```bash
 python scripts/run_pipeline.py --stages preprocess
@@ -158,15 +164,15 @@ To select several stages, separate their names with commas:
 python scripts/run_pipeline.py --stages preprocess,train,predict,evaluate
 ```
 
-The implemented stages are `preprocess`, `train`, `predict`, `evaluate`, `interval`, and `visualize`. They execute in that fixed order. Later stages depend on files created by earlier stages, so selecting `predict` alone requires existing models and data splits. Visualization also needs the interval and anomaly outputs.
+The implemented stages are `preprocess`, `train`, `predict`, `evaluate`, `interval`, and `visualize`. They execute in that fixed order, regardless of their order in `--stages`. Empty selections, unknown stage names, and retraining requests produce a command-line error before output directories are created. Later stages depend on files created by earlier stages, so selecting `predict` alone requires existing models and data splits. Visualization also needs the interval and anomaly outputs.
 
 To inspect the generated commands without executing the stages:
 
 ```bash
-python scripts/run_pipeline.py --stages preprocess,train,predict,evaluate,interval,visualize --dry-run
+python scripts/run_pipeline.py --dry-run
 ```
 
-A dry run still loads the profile and creates the configured output directories. It does not verify input contents, model compatibility, or successful execution. Use `--profile path/to/profile.yaml` to supply another experiment profile.
+A dry run loads and validates the profile, then prints each selected stage command once without executing stages or creating output directories. Combine `--dry-run` with `--stages` to preview a subset. It does not verify input contents, model compatibility, or successful execution. Use `--profile path/to/profile.yaml` to supply another experiment profile.
 
 ### Current execution limitations
 
@@ -174,7 +180,7 @@ The following issues need attention before treating this as a verified end-to-en
 
 - **Metadata inclusion:** the preprocessing CLI receives the inclusion setting as text, while the combining function checks for Boolean `True`. Setting `include_metadata: True` therefore does not enable the metadata columns in the combined table through this route. The metadata file is still read when inclusion is disabled.
 - **Split settings:** the runner does not pass the profile's `training_percentage` and `validation_percentage` to preprocessing. The script's defaults currently apply instead.
-- **Retraining:** the runner accepts the name `retrain` but does not dispatch a retraining stage. The profile's `retraining` setting does not trigger retraining. `scripts/retraining.py` is a separate entrypoint.
+- **Retraining:** the runner rejects `retrain` and `retraining` stage requests because retraining is not implemented by the runner. The profile's `retraining` setting does not trigger retraining. `scripts/retraining.py` is a separate entrypoint that still needs fixes and validation.
 - **Visualization paths:** the runner does not pass the experiment-specific complete-table and taxa-mapping paths to the plotter, which falls back to standalone defaults. These paths need to be supplied explicitly when invoking the plotter directly, or corrected in the runner.
 - **Forecasting setup:** the intended task is prediction over time. The standard splitting path reshapes features into three positions without explicitly constructing lags from preceding observations; the attention preprocessing path constructs lagged features separately. Input lags and future targets need verification across architectures before interpreting outputs as next-timepoint forecasts.
 
