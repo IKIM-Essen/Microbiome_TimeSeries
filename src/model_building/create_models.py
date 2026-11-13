@@ -175,7 +175,7 @@ def fit_model(
 ):
     # model_architecture can be passed directly; if not provided, read from config
     if model_architecture is None:
-        CONFIG_PATH = "config/profile.yaml"
+        CONFIG_PATH = os.path.join(ROOT_DIR, "config", "profile.yaml")
         config = load_config(CONFIG_PATH)
         model_type = config.get("model_architecture")
     else:

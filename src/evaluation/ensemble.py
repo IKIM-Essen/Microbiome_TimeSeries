@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from pickle import dump, load
 from tensorflow.keras import layers, models, Input
@@ -24,7 +26,9 @@ def _prepare_prediction_array(predictions):
     )
 
 
-CONFIG_PATH = "config/profile.yaml"
+CONFIG_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "config", "profile.yaml")
+)
 
 config = load_config(CONFIG_PATH)
 

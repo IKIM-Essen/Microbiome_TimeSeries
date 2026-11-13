@@ -91,7 +91,7 @@ def split_data(
 
     # Save split sizes for later use
     split_sizes = {"train_size": train_size, "val_size": val_size}
-    os.makedirs(os.path.dirname(split_sizes_path), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(split_sizes_path)), exist_ok=True)
     dump(split_sizes, split_sizes_path)
     logger.info("Saved split sizes to %s", split_sizes_path)
 
@@ -135,7 +135,7 @@ def split_without_scaling(
 
     # Save split sizes for later use
     split_sizes = {"train_size": train_size, "val_size": val_size}
-    os.makedirs(os.path.dirname(split_sizes_path), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(split_sizes_path)), exist_ok=True)
     dump(split_sizes, split_sizes_path)
     logger.info("Saved split sizes to %s", split_sizes_path)
 

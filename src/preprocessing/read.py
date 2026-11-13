@@ -21,7 +21,7 @@ if not logger.handlers:
     )
     logger.addHandler(file_handler)
 
-CONFIG_PATH = "config/encodings.yaml"
+CONFIG_PATH = os.path.join(ROOT_DIR, "config", "encodings.yaml")
 
 
 def read_data(path):
@@ -268,6 +268,7 @@ def create_complete_df(
     # Sort the complete dataframe by the "Time" column and reset the index
     complete.sort_values(by=["Time"], inplace=True, ignore_index=True)
     complete.fillna(0, axis=1, inplace=True)
+    os.makedirs(os.path.dirname(os.path.abspath(output)), exist_ok=True)
     complete.to_csv(output)
     metadata_woT.sort_values(by=["Time"], inplace=True, ignore_index=True)
     return complete, metadata_woT, number_taxa, dic_TargTax

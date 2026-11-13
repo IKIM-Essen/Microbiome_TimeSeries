@@ -52,7 +52,7 @@ def main():
     parser.add_argument(
         "--scaler-path",
         type=str,
-        default=None,
+        default="results/models/scaler.pkl",
         help="Path to the scaler file used for inverse scaling.",
     )
 

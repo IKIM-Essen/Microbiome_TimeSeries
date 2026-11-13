@@ -41,7 +41,7 @@ conda env create --file environment.yaml --name microbiome-timeseries
 conda activate microbiome-timeseries
 ```
 
-The supplied environment contains Linux-specific package builds. Installation on macOS or Windows has not been established. Run the commands in this README from the repository's main directory so that relative paths such as `config/profile.yaml` resolve correctly.
+The supplied environment contains Linux-specific package builds. Installation on macOS or Windows has not been established. The commands in this README assume that you launch them from the repository's main directory. See [File paths](#file-paths) when using another working directory.
 
 ## Prepare your input data
 
@@ -144,6 +144,18 @@ The `paths` section names output subdirectories such as `models`, `tables`, `int
 
 The profile also contains training and validation proportions and a retraining setting. These are not currently connected to the runner's stage commands; see the limitations below before changing them.
 
+### File paths
+
+The runner locates its default `config/profile.yaml` and stage scripts relative to the repository, and launches each stage with the same Python interpreter used to launch the runner. Built-in metadata encodings and fallback model configuration are also located relative to the repository.
+
+Relative input and output paths are resolved from the directory where you launch the command. A relative `--profile` path is also resolved from that directory; selecting a different profile does not make data paths relative to the profile's directory. Absolute paths can be used for inputs, outputs, and the profile.
+
+The runner passes experiment-specific paths to all stages, including the reference taxa file for interval calculation and the prepared table and taxa mapping for visualization. Parent directories are created before output files are written. Logging continues to use the repository's `logs/` directory.
+
+Scaler arguments always name the **complete file**, such as `results/my_experiment/models/scaler.pkl`. Pass that same filename when saving, evaluating, or calculating intervals; do not pass just the model directory. Existing scaler files do not need to be moved. For standalone scripts, use `--scaler-path`; the interval script accepts both `--scaler` and `--scaler-path`. The training script's `--path` argument continues to name a model directory.
+
+Paths with spaces are supported. When entering them in a terminal, quote the entire argument, for example `--scaler-path "results/my experiment/models/scaler.pkl"`. The runner passes paths directly to subprocesses as separate arguments.
+
 ## Run pipeline stages
 
 Use `scripts/run_pipeline.py` to build stage commands from the profile. With no stage selection, the runner executes all six standard stages in order:
@@ -181,7 +193,6 @@ The following issues need attention before treating this as a verified end-to-en
 - **Metadata inclusion:** the preprocessing CLI receives the inclusion setting as text, while the combining function checks for Boolean `True`. Setting `include_metadata: True` therefore does not enable the metadata columns in the combined table through this route. The metadata file is still read when inclusion is disabled.
 - **Split settings:** the runner does not pass the profile's `training_percentage` and `validation_percentage` to preprocessing. The script's defaults currently apply instead.
 - **Retraining:** the runner rejects `retrain` and `retraining` stage requests because retraining is not implemented by the runner. The profile's `retraining` setting does not trigger retraining. `scripts/retraining.py` is a separate entrypoint that still needs fixes and validation.
-- **Visualization paths:** the runner does not pass the experiment-specific complete-table and taxa-mapping paths to the plotter, which falls back to standalone defaults. These paths need to be supplied explicitly when invoking the plotter directly, or corrected in the runner.
 - **Forecasting setup:** the intended task is prediction over time. The standard splitting path reshapes features into three positions without explicitly constructing lags from preceding observations; the attention preprocessing path constructs lagged features separately. Input lags and future targets need verification across architectures before interpreting outputs as next-timepoint forecasts.
 
 ## Understand the results

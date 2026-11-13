@@ -79,7 +79,7 @@ def main():
         "--scaler-path",
         type=str,
         default="results/models/scaler.pkl",
-        help="Path to save the scaler.",
+        help="Full filename to save the scaler, including the .pkl extension.",
     )
     parser.add_argument(
         "--splits-sizes",
@@ -106,7 +106,7 @@ def main():
         args.timeseries, args.metadata, args.taxa, args.include_metadata, args.output
     )
 
-    os.makedirs(os.path.dirname(args.mapping_output), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(args.mapping_output)), exist_ok=True)
     with open(args.mapping_output, "wb") as mapping_file:
         pickle.dump(dic_TargTax, mapping_file)
     print(f"Saved target taxa mapping to {args.mapping_output}")
@@ -123,7 +123,7 @@ def main():
             args.val_percentage,
             args.splits_sizes,
         )
-        os.makedirs(os.path.dirname(args.splits_output), exist_ok=True)
+        os.makedirs(os.path.dirname(os.path.abspath(args.splits_output)), exist_ok=True)
         np.savez_compressed(
             args.splits_output,
             X_train=X_train,
@@ -161,7 +161,7 @@ def main():
             args.train_percentage,
             args.val_percentage,
         )
-        os.makedirs(os.path.dirname(args.splits_output), exist_ok=True)
+        os.makedirs(os.path.dirname(os.path.abspath(args.splits_output)), exist_ok=True)
         np.savez_compressed(
             args.splits_output,
             X_bact_train=X_bact_train,
