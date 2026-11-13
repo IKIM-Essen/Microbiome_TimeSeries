@@ -62,11 +62,15 @@ The examples below use the same two taxa and three sampling dates throughout. Th
 
 Use a tab-separated table with taxa in rows and sampling timepoints in columns. The first row contains column headers; the first column contains taxonomy labels through the genus level in SILVA-style format.
 
+<!-- markdownlint-disable MD010 -->
+
 ```tsv
 taxonomy	2025-01-01	2025-01-02	2025-01-03
 d__Bacteria; p__Bacteroidota; c__Bacteroidia; o__Bacteroidales; f__Bacteroidaceae; g__Bacteroides	0.60	0.55	0.70
 d__Bacteria; p__Bacillota; c__Clostridia; o__Lachnospirales; f__Lachnospiraceae; g__Blautia	0.40	0.45	0.30
 ```
+
+<!-- markdownlint-enable MD010 -->
 
 These example values are relative abundances expressed as fractions. Use one consistent abundance scale throughout your analysis and document it when interpreting errors and intervals. Preprocessing applies numerical scaling for model fitting; it does not convert raw counts into relative abundances.
 
@@ -76,11 +80,15 @@ Preprocessing sums duplicate taxonomy labels, removes labels containing `Unassig
 
 Use a tab-separated table with metadata variables in rows and sampling timepoints in columns. The headers must match the abundance table, in the same order.
 
+<!-- markdownlint-disable MD010 -->
+
 ```tsv
 variable	2025-01-01	2025-01-02	2025-01-03
 temperature	18.2	18.5	19.1
 pH	7.1	7.0	7.2
 ```
+
+<!-- markdownlint-enable MD010 -->
 
 For example, `temperature` and `pH` describe the conditions at each sampling timepoint. Use numeric values for ordinary model inputs. The repository also contains intended month and season encodings and a list of fields to drop in `config/encodings.yaml`; arbitrary text categories are not automatically encoded.
 
