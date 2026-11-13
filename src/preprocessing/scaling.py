@@ -48,16 +48,26 @@ def scale_data_with_scaler(complete, scaler_path="results/models/scaler.pkl"):
 
 
 def inverse_scale_data(scaled_data, scaler_path):
+    """Invert scaling for all features or the leading microbial target columns."""
     logger.info("Inversely scaling data with scaler %s", scaler_path)
     scaler = load(scaler_path)
-    original_data = scaler.inverse_transform(scaled_data)
+    scaled_data = np.asarray(scaled_data)
+    if scaled_data.ndim != 2:
+        raise ValueError("Inverse scaling requires a two-dimensional array")
+    feature_count = scaled_data.shape[1]
+    if not 0 < feature_count <= scaler.n_features_in_:
+        raise ValueError("Prediction columns do not match the fitted scaler")
+    if feature_count < scaler.n_features_in_:
+        # MinMaxScaler transforms columns independently. Padding unused input
+        # features allows taxa-only predictions to use the original input scaler.
+        padded = np.zeros((len(scaled_data), scaler.n_features_in_))
+        padded[:, :feature_count] = scaled_data
+        original_data = scaler.inverse_transform(padded)[:, :feature_count]
+    else:
+        original_data = scaler.inverse_transform(scaled_data)
     logger.info("Inversely scaled data shape %s", original_data.shape)
     return original_data
 
 
 def inverse_scale_data_attention(scaled_data, scaler_path, num_taxa):
-    logger.info("Inversely scaling data with scaler %s", scaler_path)
-    scaler = load(scaler_path)
-    original_data = scaler.inverse_transform(scaled_data)[:, 0:num_taxa]
-    logger.info("Inversely scaled data shape %s", original_data.shape)
-    return original_data
+    return inverse_scale_data(scaled_data, scaler_path)[:, :num_taxa]

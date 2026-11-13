@@ -35,14 +35,11 @@ def split_data(
 ):
     logger.info("Splitting data for %s taxa", num_taxa)
     scaled_data, scaler = scale_date(complete, scaler_path)
-    count = sum(
-        not col.startswith("Target") and not col.startswith("Time")
-        for col in complete.columns
-    )
     X = scaled_data.reshape(
         scaled_data.shape[0], scaled_data.shape[1]
     )  # Reshape for LSTM input
-    y = scaled_data[:, 0 : num_taxa + count]
+    # Metadata are predictors; only the leading taxa columns are targets.
+    y = scaled_data[:, :num_taxa]
     # Split the data into training and testing sets
     train_size = int(len(X) * train_percentage)
     val_size = int(len(X) * (train_percentage + val_percentage))
@@ -156,27 +153,26 @@ def split_indices(n_samples, train_percentage=0.7, val_percentage=0.1):
 def split_data_attention(
     complete, num_taxa, scaler_path, metadata_woT, train_percentage, val_percentage
 ):
-    lag_targets = 3
     logger.info("Splitting data for %s taxa", num_taxa)
-    metadata_woT = metadata_woT.drop(["Time"], axis=1)
-    metadata_woT = metadata_woT.fillna(0)
-    complete = complete.dropna()
+    # Keep metadata out of the bacterial branch and its scaler.
+    target_columns = [f"Target{i+1}" for i in range(num_taxa)]
+    complete = complete[["Time", *target_columns]].copy()
+    if not metadata_woT["Time"].equals(complete["Time"]):
+        raise ValueError("Metadata and bacterial observations must be aligned by Time")
+    metadata_woT = metadata_woT.drop(columns=["Time"])
+    if metadata_woT.shape[1] == 0:
+        raise ValueError("This architecture requires at least one metadata feature")
     for y in range(num_taxa):
         for i in range(1, 4):
             complete[f"Target{y+1}_Lag_{i}"] = complete[f"Target{y+1}"].shift(i)
-            lag_targets += 1
     complete = complete.fillna(0)
     scaled_data, scaler = scale_date(complete, scaler_path)
-    X_bact = scaled_data[:, num_taxa : (num_taxa + lag_targets)]
+    X_bact = scaled_data[:, num_taxa:]
     X_bact = X_bact.reshape(X_bact.shape[0], 1, X_bact.shape[1])
 
     # Convert metadata to numpy and reshape for time dimension
     X_meta = np.array(metadata_woT, dtype=np.float32)
     X_meta = X_meta.reshape(X_meta.shape[0], 1, X_meta.shape[1])
-
-    # Ensure bacterial data is numeric
-    X_bact = scaled_data[:, num_taxa : (num_taxa + lag_targets)]
-    X_bact = X_bact.reshape(X_bact.shape[0], 1, X_bact.shape[1])
 
     # Ensure target is numeric
     y = scaled_data[:, 0:num_taxa]
