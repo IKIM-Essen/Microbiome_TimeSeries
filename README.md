@@ -4,7 +4,7 @@ This repository provides a workflow for training and evaluating machine learning
 
 The workflow starts with a microbial abundance table, a reference list of taxa, and a matching metadata table. Metadata can describe environmental conditions or other sample characteristics. Outputs include trained models, predictions, evaluation metrics, prediction intervals, and an interactive plot for exploring potential anomalies.
 
-The updated workflow is under active development and has primarily been tested on Linux. The examples below explain how its parts fit together; they have not yet been validated as an end-to-end getting-started example. See [Current execution limitations](#current-execution-limitations) before running an analysis.
+The workflow is under active development. Read [Project status](#project-status) and [Current execution limitations](#current-execution-limitations) before running an analysis. The input examples illustrate file structure; they are not a validated end-to-end training example.
 
 ## Workflow overview
 
@@ -20,6 +20,8 @@ The updated workflow is under active development and has primarily been tested o
 | Visualize | Explore observed values, predictions, intervals, and anomalies by taxon. | An interactive HTML plot |
 
 Training fits model parameters. Validation provides a separate subset during model development. The test set is the later part of the time series used to assess predictions. The standard preprocessing defaults allocate 70% of observations to training, 10% to validation, and the remaining 20% to testing, in chronological order.
+
+Throughout this README, a **taxon** is one microbial group represented by a taxonomy label; **taxa** is the plural. A **timepoint** is one sampling observation. An **anomaly** is an observation outside a model-derived prediction interval, also called an interval violation in parts of the code.
 
 ## Installation
 
@@ -166,7 +168,7 @@ The following issues need attention before treating this as a verified end-to-en
 - **Split settings:** the runner does not pass the profile's `training_percentage` and `validation_percentage` to preprocessing. The script's defaults currently apply instead.
 - **Retraining:** the runner accepts the name `retrain` but does not dispatch a retraining stage. The profile's `retraining` setting does not trigger retraining. `scripts/retraining.py` is a separate entrypoint.
 - **Visualization paths:** the runner does not pass the experiment-specific complete-table and taxa-mapping paths to the plotter, which falls back to standalone defaults. These paths need to be supplied explicitly when invoking the plotter directly, or corrected in the runner.
-- **Forecasting setup:** the intended task is prediction over time. The construction of input lags and future targets needs verification across architectures before claiming that every model forecasts the next timepoint from the preceding three observations.
+- **Forecasting setup:** the intended task is prediction over time. The standard splitting path reshapes features into three positions without explicitly constructing lags from preceding observations; the attention preprocessing path constructs lagged features separately. Input lags and future targets need verification across architectures before interpreting outputs as next-timepoint forecasts.
 
 ## Understand the results
 
@@ -205,11 +207,11 @@ The runner supplies experiment-specific paths to the stage scripts. Running a sc
 | `scripts/plot_taxa_anomalies.py` | Create the interactive HTML plot. |
 | `scripts/retraining.py` | Provide a separate workflow for adapting existing models to new data. |
 
-## Datasets and previous analyses
+## Datasets and historical analyses
 
 The input abundance data are derived from 16S rRNA gene analyses, for example by converting a BIOM table into a tab-separated table with the structure described above.
 
-Models have previously been trained and tested on published time series from:
+Previous analyses associated with this repository used published time series from:
 
 - Caporaso et al., *Genome Biology*, 2011
 - David et al., *Genome Biology*, 2014
@@ -217,7 +219,19 @@ Models have previously been trained and tested on published time series from:
 - LaMartina et al., *Microbiome*, 2021
 - Dörr et al., *Scientific Reports*, 2025
 
-Earlier analyses also used SHAP for feature importance. Historical scripts are retained in `old/`; SHAP analysis is not a stage in the current pipeline runner.
+Historical scripts are retained in [`old/`](old/), including alternative model architectures and SHAP feature importance analyses. The current workflow uses `scripts/`, `src/`, and `config/`; its stage entrypoints are listed in the [script reference](#script-reference). SHAP analysis is not a stage in the current pipeline runner.
+
+The publications below describe earlier analyses. Their reported results do not establish that the current pipeline reproduces those analyses or that every current model architecture has been validated.
+
+## Project status
+
+The profile-driven workflow is being developed and has primarily been tested on Linux. The supplied environment contains Linux-specific builds; macOS and Windows support has not been established.
+
+This README describes the stages and outputs present in the current code. End-to-end execution, compatibility across model architectures, and the forecasting setup still need validation. The [execution limitations](#current-execution-limitations) identify known discrepancies between the configuration and software behavior.
+
+## License
+
+This software is released under the [MIT License](LICENSE).
 
 ## Citation
 
