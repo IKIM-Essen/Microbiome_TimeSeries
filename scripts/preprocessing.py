@@ -13,6 +13,15 @@ from src.preprocessing.read import create_complete_df
 from src.preprocessing.split import split_data, split_data_attention
 
 
+def _parse_bool(value):
+    normalized = value.strip().lower()
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    raise argparse.ArgumentTypeError("Expected True or False for --include-metadata")
+
+
 def main():
 
     parser = argparse.ArgumentParser(
@@ -24,25 +33,25 @@ def main():
         "--timeseries",
         type=str,
         default="data/timeseries.tsv",
-        help="Path to the timeseries data file (CSV format).",
+        help="Path to the timeseries data file (TSV format).",
     )
     parser.add_argument(
         "--metadata",
         type=str,
         default="data/metadata.tsv",
-        help="Path to the metadata file (CSV format).",
+        help="Path to the metadata TSV file; required only when metadata is enabled.",
     )
     parser.add_argument(
         "--taxa",
         type=str,
         default="data/taxa.tsv",
-        help="Path to the taxa data file (CSV format).",
+        help="Path to the reference list of taxa, one label per line.",
     )
     parser.add_argument(
         "--include-metadata",
-        type=str,
+        type=_parse_bool,
         default=False,
-        help="Whether to include metadata in the output dataframe. Default is False.",
+        help="Include metadata features: True or False (case-insensitive). Default: False.",
     )
     parser.add_argument(
         "--output",
@@ -79,7 +88,7 @@ def main():
         "--scaler-path",
         type=str,
         default="results/models/scaler.pkl",
-        help="Path to save the scaler.",
+        help="Full filename to save the scaler, including the .pkl extension.",
     )
     parser.add_argument(
         "--splits-sizes",
@@ -102,11 +111,24 @@ def main():
 
     args = parser.parse_args()
 
-    complete_df, metadata, number_taxa, dic_TargTax = create_complete_df(
-        args.timeseries, args.metadata, args.taxa, args.include_metadata, args.output
-    )
+    if (
+        args.model_architecture in {"attention", "metadata_parallel"}
+        and not args.include_metadata
+    ):
+        parser.error(f"{args.model_architecture} requires --include-metadata True")
 
-    os.makedirs(os.path.dirname(args.mapping_output), exist_ok=True)
+    try:
+        complete_df, metadata, number_taxa, dic_TargTax = create_complete_df(
+            args.timeseries,
+            args.metadata,
+            args.taxa,
+            args.include_metadata,
+            args.output,
+        )
+    except (ValueError, FileNotFoundError) as error:
+        parser.error(str(error))
+
+    os.makedirs(os.path.dirname(os.path.abspath(args.mapping_output)), exist_ok=True)
     with open(args.mapping_output, "wb") as mapping_file:
         pickle.dump(dic_TargTax, mapping_file)
     print(f"Saved target taxa mapping to {args.mapping_output}")
@@ -123,7 +145,7 @@ def main():
             args.val_percentage,
             args.splits_sizes,
         )
-        os.makedirs(os.path.dirname(args.splits_output), exist_ok=True)
+        os.makedirs(os.path.dirname(os.path.abspath(args.splits_output)), exist_ok=True)
         np.savez_compressed(
             args.splits_output,
             X_train=X_train,
@@ -161,7 +183,7 @@ def main():
             args.train_percentage,
             args.val_percentage,
         )
-        os.makedirs(os.path.dirname(args.splits_output), exist_ok=True)
+        os.makedirs(os.path.dirname(os.path.abspath(args.splits_output)), exist_ok=True)
         np.savez_compressed(
             args.splits_output,
             X_bact_train=X_bact_train,

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Run the full pipeline using a profile YAML.
 
-This script loads `config/profile.yaml` (or a provided profile path),
-validates it, then runs the standard stages in order by invoking the
-existing CLI scripts in `scripts/` with arguments derived from the profile.
+This script loads `config/profile.yaml` (or a provided profile path) and
+validates it, then runs all standard stages by default, or a selected subset,
+in pipeline order. It invokes the existing CLI scripts in `scripts/` with
+arguments derived from the profile.
 
 It prefers to call the CLI scripts as subprocesses so existing behavior
 and logging remain unchanged.
@@ -16,18 +17,40 @@ import subprocess
 import sys
 
 # allow imports from repo
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from src.utils.config import load_profile, validate_profile
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT_DIR)
 
-VALID_REQUESTS = {
+DEFAULT_STAGES = (
     "preprocess",
     "train",
     "predict",
     "evaluate",
     "interval",
     "visualize",
-    "retrain",
-}
+)
+
+
+def _parse_stages(value):
+    requested = tuple(stage.strip() for stage in value.split(","))
+    if any(not stage for stage in requested):
+        raise argparse.ArgumentTypeError(
+            "Stage selection must be a nonempty comma-separated list "
+            "without empty stage names."
+        )
+
+    if any(stage in {"retrain", "retraining"} for stage in requested):
+        raise argparse.ArgumentTypeError(
+            "Retraining is not implemented by this pipeline runner. "
+            "The separate scripts/retraining.py workflow is still under development."
+        )
+
+    invalid = [stage for stage in requested if stage not in DEFAULT_STAGES]
+    if invalid:
+        raise argparse.ArgumentTypeError(
+            f"Unknown stage(s): {', '.join(invalid)}. "
+            f"Choose from: {', '.join(DEFAULT_STAGES)}."
+        )
+    return requested
 
 
 def _get_project_base(profile):
@@ -48,12 +71,13 @@ def _ensure_dirs(profile):
 
 
 def run_cmd(cmd, dry_run=False):
-    logging.info("Running: %s", cmd)
+    display_cmd = shlex.join(cmd)
     if dry_run:
-        print(cmd)
+        print(display_cmd)
         return 0
+    logging.info("Running: %s", display_cmd)
     try:
-        res = subprocess.run(shlex.split(cmd), check=True)
+        res = subprocess.run(cmd, check=True)
         return res.returncode
     except subprocess.CalledProcessError as e:
         logging.error("Command failed: %s", e)
@@ -90,6 +114,7 @@ def build_paths(profile):
         base, paths.get("intermediate", "intermediate"), "predictions.npz"
     )
     p["model_dir"] = os.path.join(base, paths.get("models", "models"))
+    p["scaler"] = os.path.join(p["model_dir"], "scaler.pkl")
     p["tcn_model"] = os.path.join(base, paths.get("models", "models"), "tcn_model.h5")
     p["lstm_model"] = os.path.join(base, paths.get("models", "models"), "lstm_model.h5")
     p["attention_model"] = os.path.join(
@@ -101,6 +126,15 @@ def build_paths(profile):
     p["evaluation_output"] = os.path.join(
         base, paths.get("tables", "tables"), "evaluation_metrics.tsv"
     )
+    p["interval_output"] = os.path.join(
+        base, paths.get("tables", "tables"), "prediction_interval.tsv"
+    )
+    p["anomalies_output"] = os.path.join(
+        base, paths.get("tables", "tables"), "prediction_interval_anomalies.tsv"
+    )
+    p["plot_output"] = os.path.join(
+        base, paths.get("figures", "figures"), "plot_taxa_anomalies.html"
+    )
     return p
 
 
@@ -109,19 +143,30 @@ def main():
     parser.add_argument(
         "--profile",
         type=str,
-        default="config/profile.yaml",
-        help="Path to profile YAML",
+        default=os.path.join(ROOT_DIR, "config", "profile.yaml"),
+        help="Path to profile YAML (default: the repository's config/profile.yaml)",
     )
     parser.add_argument(
         "--stages",
-        type=str,
-        default=None,
-        help="Comma-separated stages to run (preprocess,train,predict,evaluate,interval,visualize)",
+        type=_parse_stages,
+        default=DEFAULT_STAGES,
+        metavar="STAGE[,STAGE...]",
+        help=(
+            f"Comma-separated stages: {', '.join(DEFAULT_STAGES)}. "
+            "Defaults to all stages, executed in pipeline order. "
+            "Retraining is not supported by this runner."
+        ),
     )
     parser.add_argument(
-        "--dry-run", action="store_true", help="Print commands without executing"
+        "--dry-run",
+        action="store_true",
+        help="Print commands without executing stages or creating output directories",
     )
     args = parser.parse_args()
+    requested = args.stages
+
+    # Parse CLI arguments before loading the pipeline's dependencies.
+    from src.utils.config import load_profile, validate_profile
 
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -129,118 +174,154 @@ def main():
 
     profile = load_profile(args.profile)
     validate_profile(profile, required_keys=["project", "paths"])
-    _ensure_dirs(profile)
     pp = build_paths(profile)
-
-    requested = None
-    if args.stages:
-        requested = [s.strip() for s in args.stages.split(",") if s.strip()]
-
-    if requested is None:
-        raise ValueError("requested cannot be None")
-
-    if not isinstance(requested, list):
-        raise TypeError(f"requested must be a list, got {type(requested).__name__}")
-
-    if len(requested) == 0:
-        raise ValueError("requested cannot be empty")
-
-    invalid = [r for r in requested if r not in VALID_REQUESTS]
-
-    if invalid:
-        raise ValueError(
-            f"Invalid requested values: {invalid}. " f"Valid options: {VALID_REQUESTS}"
-        )
+    if not args.dry_run:
+        _ensure_dirs(profile)
 
     # Stage: preprocessing
-    if (requested is None) or ("preprocess" in requested):
-        cmd = (
-            f"python scripts/preprocessing.py --timeseries {pp['timeseries']} --metadata {pp['metadata']} "
-            f"--taxa {pp['taxa']} --include-metadata {profile.get('parameters', {}).get('include_metadata', False)} "
-            f"--output {pp['complete_csv']} --mapping-output {pp['mapping_output']} --model-architecture {profile.get('model_architecture')} "
-            f"--splits-output {pp['splits_output']} --scaler-path {pp['model_dir']} --splits-sizes {pp['split_sizes']} "
-        )
-        print(profile.get("parameters", {}).get("include_metadata"))
+    if "preprocess" in requested:
+        cmd = [
+            sys.executable,
+            os.path.join(ROOT_DIR, "scripts", "preprocessing.py"),
+            "--timeseries",
+            pp["timeseries"],
+            "--metadata",
+            pp["metadata"],
+            "--taxa",
+            pp["taxa"],
+            "--include-metadata",
+            str(profile.get("parameters", {}).get("include_metadata", False)),
+            "--output",
+            pp["complete_csv"],
+            "--mapping-output",
+            pp["mapping_output"],
+            "--model-architecture",
+            str(profile.get("model_architecture")),
+            "--splits-output",
+            pp["splits_output"],
+            "--scaler-path",
+            pp["scaler"],
+            "--splits-sizes",
+            pp["split_sizes"],
+        ]
         run_cmd(cmd, dry_run=args.dry_run)
-        print(cmd)
 
     # Stage: training
-    if (requested is None) or ("train" in requested):
+    if "train" in requested:
         model_arch = profile.get("model_architecture")
-        model_dir = pp["model_dir"]
-        cmd = f"python scripts/training.py --splits-input {pp['splits_output']} --path {model_dir}"
+        cmd = [
+            sys.executable,
+            os.path.join(ROOT_DIR, "scripts", "training.py"),
+            "--splits-input",
+            pp["splits_output"],
+            "--path",
+            pp["model_dir"],
+        ]
         if model_arch:
-            cmd = cmd + f" --model-architecture {model_arch}"
+            cmd.extend(["--model-architecture", model_arch])
         run_cmd(cmd, dry_run=args.dry_run)
 
     # Stage: prediction
-    if (requested is None) or ("predict" in requested):
+    if "predict" in requested:
         model_arch = profile.get("model_architecture")
-        cmd = f"python scripts/prediction.py --splits-input {pp['splits_output']} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']} --output {pp['predictions_npz']}"
+        cmd = [
+            sys.executable,
+            os.path.join(ROOT_DIR, "scripts", "prediction.py"),
+            "--splits-input",
+            pp["splits_output"],
+            "--tcn-path",
+            pp["tcn_model"],
+            "--lstm-path",
+            pp["lstm_model"],
+            "--scaler-path",
+            pp["scaler"],
+            "--output",
+            pp["predictions_npz"],
+        ]
         if model_arch:
-            cmd = cmd + f" --model-architecture {model_arch}"
+            cmd.extend(["--model-architecture", model_arch])
         if model_arch == "metadata_parallel":
-            cmd = cmd + f" --attention-path {pp['metadata_model']}"
+            cmd.extend(["--attention-path", pp["metadata_model"]])
         if model_arch == "attention":
-            cmd = cmd + f" --attention-path {pp['attention_model']}"
+            cmd.extend(["--attention-path", pp["attention_model"]])
         run_cmd(cmd, dry_run=args.dry_run)
 
     # Stage: evaluation
-    if (requested is None) or ("evaluate" in requested):
+    if "evaluate" in requested:
         model_arch = profile.get("model_architecture")
-        cmd = f"python scripts/evaluation.py --prediction-results {pp['predictions_npz']} --splits {pp['splits_output']} --output {pp['evaluation_output']} --scaler-path {pp['model_dir']}"
+        cmd = [
+            sys.executable,
+            os.path.join(ROOT_DIR, "scripts", "evaluation.py"),
+            "--prediction-results",
+            pp["predictions_npz"],
+            "--splits",
+            pp["splits_output"],
+            "--output",
+            pp["evaluation_output"],
+            "--scaler-path",
+            pp["scaler"],
+        ]
         if model_arch:
-            cmd = cmd + f" --model-architecture {model_arch}"
+            cmd.extend(["--model-architecture", model_arch])
         run_cmd(cmd, dry_run=args.dry_run)
 
-    if (requested is None) or ("interval" in requested):
-        # Build sensible defaults for interval stage using profile and built paths
+    if "interval" in requested:
         model_arch = profile.get("model_architecture")
         num_models = profile.get("parameters", {}).get("number_ensemble_model", 5)
-        base = _get_project_base(profile)
-        tables_dir = os.path.join(
-            base, profile.get("paths", {}).get("tables", "tables")
-        )
-        interval_output = os.path.join(tables_dir, "prediction_interval.tsv")
-        anomalies_output = os.path.join(tables_dir, "prediction_interval_anomalies.tsv")
-
-        scaler_path = os.path.join(pp["model_dir"])
-
-        cmd = (
-            f"python scripts/interval.py --num-models {num_models} --splits-input {pp['splits_output']} "
-            f"--scaler {scaler_path} --tcn-path {pp['tcn_model']} --lstm-path {pp['lstm_model']} "
-            f"--output {interval_output} --complete-input {pp['complete_csv']} --dic-taxa {pp['mapping_output']} "
-            f"--anomalies-output {anomalies_output}  --model-architecture {model_arch}"
-        )
+        cmd = [
+            sys.executable,
+            os.path.join(ROOT_DIR, "scripts", "interval.py"),
+            "--num-models",
+            str(num_models),
+            "--splits-input",
+            pp["splits_output"],
+            "--scaler",
+            pp["scaler"],
+            "--taxa",
+            pp["taxa"],
+            "--tcn-path",
+            pp["tcn_model"],
+            "--lstm-path",
+            pp["lstm_model"],
+            "--output",
+            pp["interval_output"],
+            "--complete-input",
+            pp["complete_csv"],
+            "--dic-taxa",
+            pp["mapping_output"],
+            "--anomalies-output",
+            pp["anomalies_output"],
+            "--model-architecture",
+            str(model_arch),
+        ]
         run_cmd(cmd, dry_run=args.dry_run)
 
-    # Stage: visualize (optional)
-    if (requested is None) or ("visualize" in requested):
-        # call the taxa violation plot if it exists
-        project_base = _get_project_base(profile)
-        base = _get_project_base(profile)
-        tables_dir = os.path.join(
-            base, profile.get("paths", {}).get("tables", "tables")
-        )
-        interval_output = os.path.join(tables_dir, "prediction_interval.tsv")
-        anomalies_output = os.path.join(tables_dir, "prediction_interval_anomalies.tsv")
-        plot_out = os.path.join(
-            project_base,
-            profile.get("paths", {}).get("figures", "figures"),
-            "plot_taxa_anomalies.html",
-        )
-        prediction_interval_path = os.path.join(
-            project_base,
-            profile.get("paths", {}).get("tables", "tables"),
-            "prediction_interval.tsv",
-        )
-        cmd = (
-            f"python scripts/plot_taxa_anomalies.py --prediction-interval {prediction_interval_path} "
-            f"--predictions {pp['predictions_npz']} --split-sizes {pp['split_sizes']} --anomalies {anomalies_output} --prediction-interval {interval_output} --output {plot_out}"
-        )
+    # Stage: visualization
+    if "visualize" in requested:
+        cmd = [
+            sys.executable,
+            os.path.join(ROOT_DIR, "scripts", "plot_taxa_anomalies.py"),
+            "--complete",
+            pp["complete_csv"],
+            "--dic-taxa",
+            pp["mapping_output"],
+            "--prediction-interval",
+            pp["interval_output"],
+            "--predictions",
+            pp["predictions_npz"],
+            "--split-sizes",
+            pp["split_sizes"],
+            "--anomalies",
+            pp["anomalies_output"],
+            "--output",
+            pp["plot_output"],
+        ]
         run_cmd(cmd, dry_run=args.dry_run)
 
-    logging.info("Pipeline finished successfully")
+    if args.dry_run:
+        logging.info("Dry run finished; no stages were executed")
+    else:
+        logging.info("Pipeline finished successfully")
 
 
 if __name__ == "__main__":

@@ -46,9 +46,16 @@ def main():
     )
     parser.add_argument(
         "--scaler",
+        "--scaler-path",
         type=str,
         default="results/models/scaler.pkl",
         help="Path to the saved scaler pickle file.",
+    )
+    parser.add_argument(
+        "--taxa",
+        type=str,
+        default="data/taxa.tsv",
+        help="Path to the reference taxa file used during preprocessing.",
     )
     parser.add_argument(
         "--tcn-path",
@@ -114,7 +121,7 @@ def main():
             y_train.shape,
         )
 
-        df = pd.read_csv("data/taxa.tsv", header=None, index_col=None)
+        df = pd.read_csv(args.taxa, header=None, index_col=None)
 
         species = extract_species(df)
 
@@ -154,7 +161,7 @@ def main():
             y_train.shape,
         )
 
-        df = pd.read_csv("data/taxa.tsv", header=None, index_col=None)
+        df = pd.read_csv(args.taxa, header=None, index_col=None)
 
         species = extract_species(df)
 
