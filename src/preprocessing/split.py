@@ -104,22 +104,19 @@ def split_without_scaling(
 ):
     logger.info("Splitting data for %s taxa", num_taxa)
 
-    count = sum(
-        not col.startswith("Target") and not col.startswith("Time")
-        for col in scaled_data.columns
-    )
-    X = scaled_data.reshape(
-        scaled_data.shape[0], scaled_data.shape[1]
-    )  # Reshape for LSTM input
-    y = scaled_data[:, 0 : num_taxa + count]
+    scaled_data = np.asarray(scaled_data)
+    if scaled_data.ndim != 2 or not 0 < num_taxa <= scaled_data.shape[1]:
+        raise ValueError("Scaled data must be a matrix with leading microbial targets")
+    # Match split_data's feature padding and three-position input shape exactly.
+    padding = (-scaled_data.shape[1]) % 3
+    X = np.pad(scaled_data, ((0, 0), (0, padding)))
+    X = X.reshape(len(X), 3, X.shape[1] // 3)
+    y = scaled_data[:, :num_taxa]
     # Split the data into training and testing sets
     train_size = int(len(X) * train_percentage)
     val_size = int(len(X) * (train_percentage + val_percentage))
     X_train, X_val, X_test = X[0:train_size], X[train_size:val_size], X[val_size:]
     y_train, y_val, y_test = y[0:train_size], y[train_size:val_size], y[val_size:]
-    X_train = X_train.reshape(X_train.shape[0], 1, X_train.shape[1])
-    X_val = X_val.reshape(X_val.shape[0], 1, X_val.shape[1])
-    X_test = X_test.reshape(X_test.shape[0], 1, X_test.shape[1])
     logger.info(
         "Split sizes X_train=%s y_train=%s X_val=%s y_val=%s X_test=%s y_test=%s",
         X_train.shape,

@@ -41,7 +41,7 @@ def _parse_stages(value):
     if any(stage in {"retrain", "retraining"} for stage in requested):
         raise argparse.ArgumentTypeError(
             "Retraining is not implemented by this pipeline runner. "
-            "The separate scripts/retraining.py workflow is still under development."
+            "Use the separate scripts/retraining.py workflow for tcn_lstm or lstm."
         )
 
     invalid = [stage for stage in requested if stage not in DEFAULT_STAGES]

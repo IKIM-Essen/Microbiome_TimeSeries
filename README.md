@@ -201,7 +201,7 @@ A dry run loads and validates the profile, then prints each selected stage comma
 The following issues need attention before treating this as a verified end-to-end workflow:
 
 - **Split settings:** the runner does not pass the profile's `training_percentage` and `validation_percentage` to preprocessing. The script's defaults currently apply instead.
-- **Retraining:** the runner rejects `retrain` and `retraining` stage requests because retraining is not implemented by the runner. The profile's `retraining` setting does not trigger retraining. `scripts/retraining.py` is a separate entrypoint that still needs fixes and validation.
+- **Retraining:** the runner rejects `retrain` and `retraining` stage requests because retraining uses the separate entrypoint described below. The profile's `retraining` setting does not trigger retraining. Standalone retraining supports `tcn_lstm` and `lstm`; metadata-specific architectures are not yet supported.
 - **Forecasting setup:** the intended task is prediction over time. The standard splitting path reshapes features into three positions without explicitly constructing lags from preceding observations; the attention preprocessing path constructs lagged features separately. Input lags and future targets need verification across architectures before interpreting outputs as next-timepoint forecasts.
 
 ## Understand the results
@@ -249,6 +249,38 @@ The scaler is required to restore saved predictions to abundance units. `--split
 
 New interval tables carry explicit `Time` labels. Legacy interval tables without `Time` use the test boundary from predictions or the split-size file. Only surplus leading NaN padding is removed; gaps within the test period keep their original positions. Mismatched lengths or sample labels produce an error instead of shifting curves to the end of the time series. Regenerate inconsistent interval outputs before plotting them.
 
+## Retrain existing models on a new dataset
+
+Use `scripts/retraining.py` to adapt saved `tcn_lstm` or standalone `lstm` models. Retraining reuses the original fitted scaler, reference taxa, and feature schema. It transforms the new data without fitting a new scaler and writes new models and results into a **new or empty output directory**. Source models, scaler, mapping, and input files are left unchanged.
+
+For a TCN with a residual LSTM, for example:
+
+```bash
+python scripts/retraining.py \
+  --timeseries data/new_site/timeseries.tsv \
+  --taxa data/reference_taxa.tsv \
+  --metadata data/new_site/metadata.tsv \
+  --include-metadata \
+  --model-architecture tcn_lstm \
+  --tcn-path results/source_experiment/models/tcn_model.h5 \
+  --lstm-path results/source_experiment/models/lstm_model.h5 \
+  --scaler-path results/source_experiment/models/scaler.pkl \
+  --source-mapping results/source_experiment/intermediate/dic_TargTax.pkl \
+  --output-dir results/retrained_site \
+  --train-percentage 0.5 \
+  --val-percentage 0.1 \
+  --epochs 10 \
+  --num-models 5
+```
+
+For a standalone LSTM, select `--model-architecture lstm` and omit `--tcn-path`. The source models must include their saved training configuration and accept the same input shape and microbial targets as the current preprocessing. Older models with incompatible input or output shapes are rejected.
+
+`--include-metadata` is a Boolean flag for this standalone command. Omit it and `--metadata` if the original model used no metadata. When metadata are enabled, their retained fields must match the source scaler's named features; field order is aligned to that schema. The reference taxa and their order must match `--source-mapping`. Taxa absent from the new abundance table remain zero-filled against that fixed reference.
+
+Training and validation fractions must be positive, sum to less than one, and leave nonempty training, validation, and test sets. `--epochs` (default 10) and `--batch-size` (default 32) apply to both the primary retrained models and each interval ensemble member. `--num-models` (default 5) controls an additional ensemble of independently retrained copies of the source models. Validation residuals determine interval widths in abundance units; test observations are reserved for evaluation and anomaly detection. The interval method's statistical coverage still needs scientific verification.
+
+The output directory contains the usual `models/`, `tables/`, `intermediate/`, and `figures/` artifacts: retrained model files, an unchanged copy of the original scaler, prepared observations, taxa mapping, splits and boundaries, predictions, metrics, dated intervals, anomalies, and an interactive plot. Each retraining run needs a fresh output directory so that an earlier run is not overwritten.
+
 ## Script reference
 
 The runner supplies experiment-specific paths to the stage scripts. Running a script directly does not automatically apply all profile settings; standalone defaults commonly point to `results/tables/`, `results/models/`, or `results/intermediate/` without an experiment name.
@@ -262,7 +294,7 @@ The runner supplies experiment-specific paths to the stage scripts. Running a sc
 | `scripts/evaluation.py` | Compare predictions with observations and save error metrics. |
 | `scripts/interval.py` | Estimate prediction intervals and detect observations outside them. |
 | `scripts/plot_taxa_anomalies.py` | Create the interactive HTML plot. |
-| `scripts/retraining.py` | Provide a separate workflow for adapting existing models to new data. |
+| `scripts/retraining.py` | Adapt saved `tcn_lstm` or `lstm` models to new data using the original scaler and schema, saving a separate experiment. |
 
 ## Datasets and historical analyses
 
