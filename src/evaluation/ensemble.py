@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from pickle import dump, load
 from tensorflow.keras import layers, models, Input
@@ -24,11 +26,75 @@ def _prepare_prediction_array(predictions):
     )
 
 
-CONFIG_PATH = "config/profile.yaml"
+CONFIG_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "config", "profile.yaml")
+)
 
 config = load_config(CONFIG_PATH)
 
 mode = config["model_architecture"]
+
+
+def predict_retraining_interval(
+    number_models,
+    X_train,
+    y_train,
+    X_val,
+    y_val,
+    X_test,
+    scaler_path,
+    tcn_path,
+    lstm_path,
+    epochs=10,
+    batch_size=32,
+):
+    """Apply the residual-quantile interval method to independent retrained copies.
+
+    Source files are only loaded. Calibration uses validation observations and
+    predictions on the original abundance scale; test observations are not used.
+    """
+    if number_models < 1:
+        raise ValueError("At least one retrained ensemble member is required")
+    validation_predictions, test_predictions = [], []
+    for _ in range(number_models):
+        tcn, lstm = fit_model_retraining(
+            X_train,
+            y_train,
+            X_val,
+            y_val,
+            tcn_path,
+            lstm_path,
+            epochs=epochs,
+            batch_size=batch_size,
+        )
+        for inputs, destination in (
+            (X_val, validation_predictions),
+            (X_test, test_predictions),
+        ):
+            predicted = (
+                ensemble_predict(tcn, lstm, inputs)
+                if tcn is not None
+                else lstm.predict(inputs, verbose=0)
+            )
+            destination.append(
+                inverse_scale_data(_prepare_prediction_array(predicted), scaler_path)
+            )
+
+    validation_mean = np.mean(validation_predictions, axis=0)
+    observed = inverse_scale_data(y_val, scaler_path)
+    residuals = validation_mean - observed
+    lower_width = np.maximum(np.abs(np.quantile(residuals, 0.025, axis=0)), 0.02)
+    upper_width = np.maximum(np.abs(np.quantile(residuals, 0.975, axis=0)), 0.02)
+    mean = np.mean(test_predictions, axis=0)
+    if not np.isfinite(mean).all() or not np.isfinite(residuals).all():
+        raise ValueError("Retrained ensemble predictions must be finite")
+    lower = np.maximum(0, mean - lower_width)
+    upper = np.maximum(0, mean + upper_width)
+    mean = np.maximum(0, mean)
+    return [
+        [upper[:, index], lower[:, index], mean[:, index]]
+        for index in range(y_train.shape[1])
+    ]
 
 
 def predict_interval(
@@ -45,6 +111,21 @@ def predict_interval(
     lstm_path,
     retraining=False,
 ):
+    if retraining:
+        if mode not in {"tcn_lstm", "lstm"}:
+            raise ValueError("Retrained intervals support only tcn_lstm and lstm")
+        return predict_retraining_interval(
+            number_models,
+            Xtrain,
+            Ytrain,
+            Xval,
+            Yval,
+            Xtest,
+            scaler_path,
+            tcn_path if mode == "tcn_lstm" else None,
+            lstm_path,
+            epochs=100,
+        )
     # make predictions
 
     ensemble = []
@@ -53,22 +134,16 @@ def predict_interval(
     for i in range(number_models):
         # define and fit the model on the training set
         if mode == "tcn_lstm":
-            if retraining == False:
-                tcn_model, lstm_model = fit_model(
-                    Xtrain,
-                    Ytrain,
-                    Xval,
-                    Yval,
-                    species,
-                    tcn_path,
-                    str(mode),
-                    save_model=False,
-                )
-
-            elif retraining == True:
-                tcn_model, lstm_model = fit_model_retraining(
-                    Xtrain, Ytrain, Xval, Yval, species, tcn_path, lstm_path
-                )
+            tcn_model, lstm_model = fit_model(
+                Xtrain,
+                Ytrain,
+                Xval,
+                Yval,
+                species,
+                tcn_path,
+                str(mode),
+                save_model=False,
+            )
             # Make predictions on the test set
             predictions_val = ensemble_predict(tcn_model, lstm_model, Xval)
         elif mode == "lstm":

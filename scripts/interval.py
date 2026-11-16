@@ -15,8 +15,8 @@ from src.evaluation.ensemble import predict_interval
 from src.evaluation.ensemble_metadata import (
     predict_interval as predict_interval_metadata,
 )
-from src.evaluation.outlier import find_interval_anomalies
-from src.utils.config import extract_species, prediction_interval_to_df
+from src.evaluation.outlier import align_prediction_intervals, find_interval_anomalies
+from src.utils.config import prediction_interval_to_df
 
 
 def main():
@@ -46,9 +46,16 @@ def main():
     )
     parser.add_argument(
         "--scaler",
+        "--scaler-path",
         type=str,
         default="results/models/scaler.pkl",
         help="Path to the saved scaler pickle file.",
+    )
+    parser.add_argument(
+        "--taxa",
+        type=str,
+        default="data/taxa.tsv",
+        help="Path to the reference taxa file used during preprocessing.",
     )
     parser.add_argument(
         "--tcn-path",
@@ -114,9 +121,9 @@ def main():
             y_train.shape,
         )
 
-        df = pd.read_csv("data/taxa.tsv", header=None, index_col=None)
+        df = pd.read_csv(args.taxa, header=None, index_col=None)
 
-        species = extract_species(df)
+        species = df.iloc[:, 0].astype(str).tolist()
 
         logger.info("Computing prediction interval with %s models", args.num_models)
         prediction_interval = predict_interval(
@@ -154,9 +161,9 @@ def main():
             y_train.shape,
         )
 
-        df = pd.read_csv("data/taxa.tsv", header=None, index_col=None)
+        df = pd.read_csv(args.taxa, header=None, index_col=None)
 
-        species = extract_species(df)
+        species = df.iloc[:, 0].astype(str).tolist()
 
         logger.info("Computing prediction interval with %s models", args.num_models)
 
@@ -176,13 +183,25 @@ def main():
             args.tcn_path,
         )
 
+    logger.info("Loading complete dataframe from %s", args.complete_input)
+    complete_df = pd.read_csv(args.complete_input, dtype={"Time": str})
+    val_start = X_train.shape[0] + X_val.shape[0]
+    test_times = complete_df["Time"].iloc[val_start:].tolist()
+    if len(test_times) != len(X_test):
+        raise ValueError("Saved splits do not match the prepared table's test period")
+    prediction_interval = align_prediction_intervals(
+        prediction_interval, len(test_times)
+    )
+
     # Ensure output directory exists
     output_dir = os.path.dirname(args.output)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
     # Convert prediction interval into TSV-friendly dataframe
-    prediction_interval_df = prediction_interval_to_df(prediction_interval, species)
+    prediction_interval_df = prediction_interval_to_df(
+        prediction_interval, species, timepoints=test_times
+    )
 
     # Save prediction interval to TSV
     logger.info("Saving prediction interval TSV to %s", args.output)
@@ -190,13 +209,10 @@ def main():
     logger.info("Prediction interval successfully saved")
 
     # Run interval violation detection
-    logger.info("Loading complete dataframe from %s", args.complete_input)
-    complete_df = pd.read_csv(args.complete_input)
     logger.info("Loading taxa mapping from %s", args.dic_taxa)
     with open(args.dic_taxa, "rb") as mapping_file:
         dic_taxa = pickle.load(mapping_file)
 
-    val_start = X_train.shape[0] + X_val.shape[0]
     logger.info("Detecting anomalies starting at row index %s", val_start)
     anomalies_df = find_interval_anomalies(
         complete=complete_df,

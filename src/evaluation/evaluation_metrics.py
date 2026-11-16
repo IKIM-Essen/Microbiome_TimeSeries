@@ -137,6 +137,7 @@ def combine_metrics(
     logger.info("Combined metrics: %s", metrics)
     # Save to TSV if a path is provided
     if output_path is not None:
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         df = pd.DataFrame([metrics])
         df.to_csv(output_path, sep="\t", index=False)
         logger.info(

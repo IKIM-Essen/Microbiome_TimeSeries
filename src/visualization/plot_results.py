@@ -1,13 +1,18 @@
+import ast
 import logging
 import os
 import pickle
+from numbers import Integral
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
+from joblib import load
 from plotly.subplots import make_subplots
 
-from src.utils.config import get_num_taxa
+from src.evaluation.outlier import ANOMALY_COLUMNS, align_prediction_intervals
+from src.preprocessing.scaling import inverse_scale_data
 
 ROOT_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
@@ -28,43 +33,134 @@ if not logger.handlers:
 
 
 def load_taxa_mapping(path):
-    with open(path, "rb") as f:
-        return pickle.load(f)
+    with open(path, "rb") as handle:
+        return pickle.load(handle)
 
 
 def read_prediction_interval(tsv_path):
-    return pd.read_csv(tsv_path, sep="\t")
+    frame = pd.read_csv(tsv_path, sep="\t", dtype={"Time": str})
+    required = {"species", "lower", "upper", "mean"}
+    if not required.issubset(frame.columns):
+        raise ValueError(f"Interval table requires columns: {sorted(required)}")
+    if "Time" not in frame and "timepoint" not in frame:
+        raise ValueError("Interval table requires Time or timepoint labels")
+
+    def normalize_label(value):
+        label = str(value)
+        # Older interval files serialized singleton numpy labels as ['taxon'].
+        if label.startswith("[") and label.endswith("]"):
+            try:
+                legacy = ast.literal_eval(label)
+            except (ValueError, SyntaxError):
+                return label
+            if isinstance(legacy, list) and len(legacy) == 1:
+                return str(legacy[0])
+        return label
+
+    frame["species"] = frame["species"].map(normalize_label)
+    return frame
+
+
+def read_anomalies(path):
+    if path is None:
+        return pd.DataFrame(columns=ANOMALY_COLUMNS)
+    try:
+        frame = pd.read_csv(path, sep="\t", dtype={"Time": str})
+    except pd.errors.EmptyDataError:
+        logger.warning("Legacy empty anomaly file %s has no headers", path)
+        return pd.DataFrame(columns=ANOMALY_COLUMNS)
+    required = {"Time", "Target", "Actual", "Lower", "Upper", "Violation"}
+    if not required.issubset(frame.columns):
+        raise ValueError(f"Anomaly table requires columns: {sorted(required)}")
+    return frame
 
 
 def flatten_prediction(pred):
     pred = np.asarray(pred)
-    if pred.ndim == 3:
-        # Handle prediction tensors from windowed models by taking the final timestep.
-        # This covers shapes like (samples, 1, n_targets) and (samples, 3, n_targets).
-        return pred[:, -1, :]
+    if pred.ndim == 3 and pred.shape[1] == 1:
+        return pred[:, 0, :]
     if pred.ndim == 2:
         return pred
-    raise ValueError(f"Cannot flatten prediction array with shape {pred.shape}")
+    raise ValueError(
+        f"Expected single-step predictions shaped (samples, targets) or "
+        f"(samples, 1, targets), got {pred.shape}"
+    )
 
 
-def load_predictions(predictions_npz):
+def load_predictions(predictions_npz, scaler_path):
+    if scaler_path is None:
+        raise ValueError(
+            "A scaler file is required to plot predictions in abundance units"
+        )
     with np.load(predictions_npz) as data:
-        pred_train = flatten_prediction(data["pred_train"])
-        pred_val = flatten_prediction(data["pred_val"])
-        pred_test = flatten_prediction(data["pred_test"])
-    return pred_train, pred_val, pred_test
+        predictions = [
+            flatten_prediction(data[key])
+            for key in ("pred_train", "pred_val", "pred_test")
+        ]
+    if len({array.shape[1] for array in predictions}) != 1:
+        raise ValueError("Prediction splits must have matching target columns")
+    return tuple(
+        inverse_scale_data(array, scaler_path) if len(array) else array
+        for array in predictions
+    )
 
 
 def load_split_sizes(split_sizes_path):
-    with open(split_sizes_path, "rb") as f:
-        split_sizes = pickle.load(f)
-    return split_sizes.get("train_size"), split_sizes.get("val_size")
+    """Return training end and test start; legacy val_size is a cumulative boundary."""
+    sizes = load(split_sizes_path)
+    train_end, test_start = sizes.get("train_size"), sizes.get("val_size")
+    if any(
+        not isinstance(value, Integral) or isinstance(value, bool)
+        for value in (train_end, test_start)
+    ):
+        raise ValueError(
+            "Split sizes require integer train_size and val_size boundaries"
+        )
+    return train_end, test_start
 
 
 def parse_target_index(target_col):
     if target_col.startswith("Target"):
-        return int(target_col.replace("Target", "")) - 1
-    raise ValueError(f"Unrecognized target column '{target_col}'")
+        index = int(target_col[len("Target") :]) - 1
+        if index >= 0:
+            return index
+    raise ValueError(f"Unrecognized target column {target_col!r}")
+
+
+def interval_values(frame, complete, test_start):
+    """Align interval rows using explicit labels, or validated legacy split offsets."""
+    if "Time" in frame:
+        labels = frame["Time"]
+        if labels.isna().any() or labels.duplicated().any():
+            raise ValueError(
+                "Interval Time labels must be nonempty and unique per taxon"
+            )
+        expected = (
+            complete["Time"].iloc[test_start:] if test_start is not None else None
+        )
+        label_set = set(labels)
+        if expected is not None and label_set != set(expected):
+            raise ValueError("Interval dates do not match the saved test period")
+        if not label_set.issubset(set(complete["Time"])):
+            raise ValueError("Interval dates are absent from the prepared observations")
+        times = [time for time in complete["Time"] if time in label_set]
+        ordered = frame.set_index("Time").loc[times]
+        return times, ordered["upper"], ordered["lower"], ordered["mean"]
+    if test_start is None:
+        raise ValueError(
+            "Legacy intervals require predictions or a saved split-size file"
+        )
+    ordered = frame.assign(timepoint=pd.to_numeric(frame["timepoint"], errors="raise"))
+    ordered = ordered.sort_values("timepoint")
+    if ordered["timepoint"].tolist() != list(range(len(ordered))):
+        raise ValueError(
+            "Legacy interval timepoints must be consecutive starting at zero"
+        )
+    times = complete["Time"].iloc[test_start:].tolist()
+    upper, lower, mean = align_prediction_intervals(
+        [[ordered["upper"], ordered["lower"], ordered["mean"]]], len(times)
+    )[0]
+    return times, upper, lower, mean
 
 
 def plot_taxa_dropdown(
@@ -74,49 +170,51 @@ def plot_taxa_dropdown(
     prediction_interval_tsv,
     predictions_npz,
     output_html="results/tables/plot_taxa_anomalies.html",
+    split_sizes_path=None,
+    scaler_path=None,
 ):
-    logger.info("Loading complete dataframe from %s", complete_csv)
-    complete = pd.read_csv(complete_csv, parse_dates=["Time"])
+    complete = pd.read_csv(complete_csv, dtype={"Time": str})
+    if "Time" not in complete or complete.empty:
+        raise ValueError("Prepared observations require a nonempty Time column")
+    if complete["Time"].isna().any() or complete["Time"].duplicated().any():
+        raise ValueError("Prepared Time labels must be nonempty and unique")
     dic_taxa = load_taxa_mapping(dic_taxa_path)
-
-    # Use mapping values as taxa names and keys as target columns
-    all_taxa = [(target, taxa_name) for target, taxa_name in dic_taxa.items()]
-
-    logger.info("Loading anomalies from %s", anomalies_tsv)
-    anomalies = pd.read_csv(anomalies_tsv, sep="\t")
-
-    interval_df = None
-    if prediction_interval_tsv and os.path.exists(prediction_interval_tsv):
-        interval_df = read_prediction_interval(prediction_interval_tsv)
-        if "species" not in interval_df.columns:
-            raise ValueError("Prediction interval TSV must contain a 'species' column")
-
-    include_interval = interval_df is not None
-    train_size = None
-    val_size = None
-    pred_train = pred_val = pred_test = None
-
-    # if split_sizes_path and os.path.exists(split_sizes_path):
-    #    train_size, val_size = load_split_sizes(split_sizes_path)
-
-    if predictions_npz and os.path.exists(predictions_npz):
-        pred_train, pred_val, pred_test = load_predictions(predictions_npz)
-        logger.info("Loaded prediction arrays from %s", predictions_npz)
-
-    train_size = pred_train.shape[0]
-    val_size = pred_val.shape[0]
-
-    prediction_traces = (
-        2
-        if (
-            train_size is not None
-            and val_size is not None
-            and pred_train is not None
-            and pred_val is not None
-        )
-        else 0
+    anomalies = read_anomalies(anomalies_tsv)
+    if not set(anomalies["Target"]).issubset(set(dic_taxa)):
+        raise ValueError("Anomaly targets are absent from the saved taxa mapping")
+    if not set(anomalies["Time"]).issubset(set(complete["Time"])):
+        raise ValueError("Anomaly dates are absent from the prepared observations")
+    interval_df = (
+        read_prediction_interval(prediction_interval_tsv)
+        if prediction_interval_tsv is not None
+        else None
     )
-    per_taxa_trace_count = 3 + prediction_traces + (5 if include_interval else 0)
+    if interval_df is not None and not set(interval_df["species"]).issubset(
+        set(dic_taxa.values())
+    ):
+        raise ValueError("Interval taxa are absent from the saved taxa mapping")
+
+    predictions = None
+    train_end = test_start = None
+    if predictions_npz is not None:
+        predictions = load_predictions(predictions_npz, scaler_path)
+        lengths = [len(array) for array in predictions]
+        if sum(lengths) != len(complete):
+            raise ValueError("Prediction rows do not match the prepared observations")
+        train_end, test_start = lengths[0], lengths[0] + lengths[1]
+    if split_sizes_path is not None:
+        saved = load_split_sizes(split_sizes_path)
+        if predictions is not None and saved != (train_end, test_start):
+            raise ValueError(
+                "Saved split boundaries do not match the prediction arrays"
+            )
+        train_end, test_start = saved
+    if test_start is not None and not 0 <= train_end <= test_start <= len(complete):
+        raise ValueError("Saved split boundaries are outside the prepared observations")
+    if test_start is not None and not set(anomalies["Time"]).issubset(
+        set(complete["Time"].iloc[test_start:])
+    ):
+        raise ValueError("Anomaly dates do not match the saved test period")
 
     fig = make_subplots(
         rows=1,
@@ -125,225 +223,136 @@ def plot_taxa_dropdown(
         horizontal_spacing=0.02,
         specs=[[{"type": "xy"}, {"type": "table"}]],
     )
-
     included_taxa = []
-    for index, (target_col, taxa_name) in enumerate(all_taxa):
+    trace_groups = []
+    for target_col, taxa_name in dic_taxa.items():
         if target_col not in complete.columns:
-            logger.warning(
-                "Target column %s missing from complete dataframe, skipping", target_col
+            raise ValueError(
+                f"Mapped target {target_col!r} is absent from the prepared table"
             )
-            continue
+        start = len(fig.data)
+        visible = not included_taxa
+        included_taxa.append(taxa_name)
 
-        included_taxa.append((target_col, taxa_name))
-        visible = len(included_taxa) == 1
+        def add_scatter(**kwargs):
+            fig.add_trace(go.Scatter(visible=visible, **kwargs), row=1, col=1)
 
-        fig.add_trace(
-            go.Scatter(
-                x=complete["Time"],
-                y=complete[target_col],
-                mode="lines+markers",
-                name="Actual values",
-                line=dict(width=2),
-                hovertemplate="<b>Taxa:</b> "
-                + taxa_name
-                + "<br><b>Date:</b> %{x|%Y-%m-%d}<br><b>Value:</b> %{y:.2f}<extra></extra>",
-                visible=visible,
-            ),
-            row=1,
-            col=1,
+        add_scatter(
+            x=complete["Time"],
+            y=complete[target_col],
+            mode="lines+markers",
+            name="Actual values",
+            line=dict(width=2),
+            hovertemplate="<b>Time:</b> %{x}<br><b>Abundance:</b> %{y:.4g}<extra></extra>",
         )
-
         target_anomalies = anomalies[anomalies["Target"] == target_col]
-        v_times = None
-        if not target_anomalies.empty and "Time" in target_anomalies.columns:
-            try:
-                v_times = pd.to_datetime(target_anomalies["Time"])
-            except Exception:
-                v_times = target_anomalies["Time"]
-
-        fig.add_trace(
-            go.Scatter(
-                x=v_times if v_times is not None else target_anomalies.index,
-                y=target_anomalies["Actual"] if not target_anomalies.empty else [],
-                mode="markers",
-                marker=dict(symbol="x", color="black", size=10),
-                name="Anomalies",
-                hovertemplate="<b>Date:</b> %{x|%Y-%m-%d}<br><b>Actual:</b> %{y:.2f}<extra></extra>",
-                visible=visible,
-            ),
-            row=1,
-            col=1,
+        add_scatter(
+            x=target_anomalies["Time"],
+            y=target_anomalies["Actual"],
+            mode="markers",
+            marker=dict(symbol="x", color="black", size=10),
+            name="Anomalies",
+            hovertemplate="<b>Time:</b> %{x}<br><b>Actual:</b> %{y:.4g}<extra></extra>",
         )
-        if include_interval:
-            pi_slice = interval_df[interval_df["species"] == taxa_name].sort_values(
-                "timepoint"
-            )
-
-            interval_df["species"] = (
-                interval_df["species"].astype(str).str.strip("[]").str.strip("'")
-            )
-
-            if not pi_slice.empty:
-                times = complete["Time"].values
-                n_pi = len(pi_slice)
-                times_pi = times[-n_pi:] if n_pi <= len(times) else times
-                mean = pi_slice["mean"].values
-                lower = pi_slice["lower"].values
-                upper = pi_slice["upper"].values
-
-                fig.add_trace(
-                    go.Scatter(
-                        x=times_pi,
-                        y=mean,
+        if interval_df is not None:
+            subset = interval_df[interval_df["species"] == taxa_name]
+            if not subset.empty:
+                times, upper, lower, mean = interval_values(
+                    subset, complete, test_start
+                )
+                for values, name, color, dash in (
+                    (mean, "Mean", "green", "dash"),
+                    (upper, "Upper", "red", "dot"),
+                    (lower, "Lower", "red", "dot"),
+                ):
+                    add_scatter(
+                        x=times,
+                        y=values,
                         mode="lines",
-                        line=dict(color="green", dash="dash"),
-                        name="Mean",
-                        showlegend=True,
-                        visible=visible,
-                    ),
-                    row=1,
-                    col=1,
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=times_pi,
-                        y=upper,
-                        mode="lines",
-                        line=dict(color="red", dash="dot"),
-                        name="Upper",
-                        showlegend=True,
-                        visible=visible,
-                    ),
-                    row=1,
-                    col=1,
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=times_pi,
-                        y=lower,
-                        mode="lines",
-                        line=dict(color="red", dash="dot"),
-                        name="Lower",
-                        showlegend=True,
-                        visible=visible,
-                    ),
-                    row=1,
-                    col=1,
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=times_pi,
-                        y=upper,
-                        fill=None,
-                        showlegend=False,
-                        visible=visible,
-                    ),
-                    row=1,
-                    col=1,
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=times_pi,
-                        y=lower,
-                        fill="tonexty",
-                        fillcolor="rgba(255,0,0,0.1)",
-                        showlegend=False,
-                        visible=visible,
-                    ),
-                    row=1,
-                    col=1,
-                )
-            else:
-                for _ in range(5):
-                    fig.add_trace(go.Scatter(x=[], y=[], visible=False), row=1, col=1)
-        if train_size is not None and pred_train is not None and pred_val is not None:
-            idx = parse_target_index(target_col)
-            fig.add_trace(
-                go.Scatter(
-                    x=complete["Time"].iloc[:train_size],
-                    y=pred_train[:, idx],
+                        name=name,
+                        line=dict(color=color, dash=dash),
+                    )
+                add_scatter(
+                    x=times,
+                    y=upper,
                     mode="lines",
-                    line=dict(color="orange", dash="dot"),
-                    name="Train prediction",
-                    visible=visible,
-                ),
-                row=1,
-                col=1,
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=complete["Time"].iloc[train_size : (val_size + train_size)],
-                    y=pred_val[:, idx],
+                    showlegend=False,
+                    line=dict(width=0),
+                    hoverinfo="skip",
+                )
+                add_scatter(
+                    x=times,
+                    y=lower,
                     mode="lines",
-                    line=dict(color="purple", dash="dot"),
-                    name="Validation prediction",
-                    visible=visible,
+                    fill="tonexty",
+                    fillcolor="rgba(255,0,0,0.1)",
+                    showlegend=False,
+                    line=dict(width=0),
+                    hoverinfo="skip",
+                )
+        if predictions is not None:
+            index = parse_target_index(target_col)
+            if index >= predictions[0].shape[1]:
+                raise ValueError(f"Prediction arrays have no column for {target_col}")
+            for values, first, last, name, color in (
+                (predictions[0], 0, train_end, "Train prediction", "orange"),
+                (
+                    predictions[1],
+                    train_end,
+                    test_start,
+                    "Validation prediction",
+                    "purple",
                 ),
-                row=1,
-                col=1,
-            )
-
+                (predictions[2], test_start, len(complete), "Test prediction", "blue"),
+            ):
+                add_scatter(
+                    x=complete["Time"].iloc[first:last],
+                    y=values[:, index],
+                    mode="lines",
+                    name=name,
+                    line=dict(color=color, dash="dot"),
+                )
         if target_anomalies.empty:
-            fig.add_trace(
-                go.Table(
-                    header=dict(values=["No anomalies for selected taxa"]),
-                    cells=dict(values=[[]]),
-                    visible=visible,
-                ),
-                row=1,
-                col=2,
+            table = go.Table(
+                header=dict(values=["No anomalies for selected taxon"]),
+                cells=dict(values=[[]]),
+                visible=visible,
             )
         else:
             display_cols = ["Time", "Actual", "Lower", "Upper", "Violation"]
-            table_df = target_anomalies[display_cols].copy()
-            table_df["Time"] = table_df["Time"].astype(str)
-            cells = [table_df[col].tolist() for col in table_df.columns]
-            fig.add_trace(
-                go.Table(
-                    header=dict(values=list(table_df.columns)),
-                    cells=dict(values=cells, align="left"),
-                    visible=visible,
+            table = go.Table(
+                header=dict(values=display_cols),
+                cells=dict(
+                    values=[target_anomalies[col].tolist() for col in display_cols],
+                    align="left",
                 ),
-                row=1,
-                col=2,
+                visible=visible,
             )
-
+        fig.add_trace(table, row=1, col=2)
+        trace_groups.append(range(start, len(fig.data)))
     if not included_taxa:
-        raise ValueError(
-            "No matching taxa columns were found in the complete dataframe."
-        )
+        raise ValueError("No matching taxa columns were found in the prepared table")
 
     buttons = []
-    for idx, (_, taxa_name) in enumerate(included_taxa):
-        base = idx * per_taxa_trace_count
-        button_visibility = [False] * len(fig.data)
-        for trace_i in range(per_taxa_trace_count):
-            if base + trace_i < len(button_visibility):
-                button_visibility[base + trace_i] = True
+    for taxon, group in zip(included_taxa, trace_groups):
+        visibility = [index in group for index in range(len(fig.data))]
         buttons.append(
             dict(
-                label=taxa_name,
+                label=taxon,
                 method="update",
                 args=[
-                    {"visible": button_visibility},
-                    {"title": f"Time series and anomalies for {taxa_name}"},
+                    {"visible": visibility},
+                    {"title": f"Time series and anomalies for {taxon}"},
                 ],
             )
         )
-
     fig.update_layout(
-        title=f"Time series and anomalies for {included_taxa[0][1]}",
-        xaxis_title="Date",
-        yaxis_title="Value",
+        title=f"Time series and anomalies for {included_taxa[0]}",
+        xaxis_title="Time",
+        yaxis_title="Abundance",
         template="plotly_white",
         margin=dict(l=60, r=20, t=100, b=120),
-        legend=dict(
-            orientation="h",
-            y=-0.12,
-            x=0.0,
-            xanchor="left",
-            yanchor="top",
-        ),
+        legend=dict(orientation="h", y=-0.12, x=0.0, xanchor="left", yanchor="top"),
         updatemenus=[
             dict(
                 active=0,
@@ -358,12 +367,7 @@ def plot_taxa_dropdown(
             )
         ],
     )
-
-    out_dir = os.path.dirname(output_html)
-    if out_dir:
-        os.makedirs(out_dir, exist_ok=True)
-
-    logger.info("Writing interactive plot to %s", output_html)
+    os.makedirs(os.path.dirname(os.path.abspath(output_html)), exist_ok=True)
     pio.write_html(fig, output_html, auto_open=False)
-    logger.info("Finished writing interactive plot")
+    logger.info("Wrote interactive plot to %s", output_html)
     return fig

@@ -56,25 +56,40 @@ def load_model_if_path(model_or_path):
     return model_or_path
 
 
-def prediction_interval_to_df(prediction_interval, species):
+def prediction_interval_to_df(prediction_interval, species, timepoints=None):
+    """Serialize intervals, optionally attaching the original test sample labels."""
+    if len(prediction_interval) != len(species):
+        raise ValueError("Prediction interval count must match the reference taxa")
+    if timepoints is not None:
+        timepoints = list(timepoints)
     records = []
     for species_idx, species_name in enumerate(species):
+        label = np.asarray(species_name).reshape(-1)
+        if len(label) != 1:
+            raise ValueError("Each species entry must contain one taxonomy label")
+        species_name = str(label[0])
         upper, lower, mean = prediction_interval[species_idx]
         if not (len(upper) == len(lower) == len(mean)):
             raise ValueError(
                 "Prediction interval arrays must be the same length for each species"
             )
+        if timepoints is not None and len(timepoints) != len(mean):
+            raise ValueError("Interval rows must match the supplied test sample labels")
         for time_idx in range(len(mean)):
-            records.append(
-                {
-                    "species": species_name,
-                    "timepoint": time_idx,
-                    "lower": lower[time_idx],
-                    "upper": upper[time_idx],
-                    "mean": mean[time_idx],
-                }
-            )
-    return pd.DataFrame.from_records(records)
+            record = {
+                "species": species_name,
+                "timepoint": time_idx,
+                "lower": lower[time_idx],
+                "upper": upper[time_idx],
+                "mean": mean[time_idx],
+            }
+            if timepoints is not None:
+                record["Time"] = timepoints[time_idx]
+            records.append(record)
+    columns = ["species", "timepoint", "lower", "upper", "mean"]
+    if timepoints is not None:
+        columns.append("Time")
+    return pd.DataFrame.from_records(records, columns=columns)
 
 
 def load_profile(path="config/profile.yaml"):

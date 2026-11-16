@@ -1,5 +1,6 @@
 import logging
 import os
+import numpy as np
 
 from keras.models import Sequential
 from keras.layers import LSTM, Dropout, Dense, Conv1D, MaxPooling1D, Embedding
@@ -175,7 +176,7 @@ def fit_model(
 ):
     # model_architecture can be passed directly; if not provided, read from config
     if model_architecture is None:
-        CONFIG_PATH = "config/profile.yaml"
+        CONFIG_PATH = os.path.join(ROOT_DIR, "config", "profile.yaml")
         config = load_config(CONFIG_PATH)
         model_type = config.get("model_architecture")
     else:
@@ -380,24 +381,44 @@ def fit_model(
         raise
 
 
-def fit_model_retraining(X_train, y_train, X_val, y_val, tcn, lstm):
+def _targets_for_model(model, targets):
+    targets = np.asarray(targets)
+    shape = tuple(model.output_shape[1:])
+    if shape == (targets.shape[1],):
+        return targets
+    if shape == (1, targets.shape[1]):
+        return targets[:, None, :]
+    raise ValueError("Source models must predict one step for the microbial targets")
+
+
+def fit_model_retraining(
+    X_train, y_train, X_val, y_val, tcn, lstm, epochs=100, batch_size=32
+):
 
     tcn = load_model_if_path(tcn)
     lstm = load_model_if_path(lstm)
 
-    tcn.fit(X_train, y_train, epochs=100, batch_size=32, validation_data=(X_val, y_val))
-    # --- Compute residuals ---
-    y_pred_tcn_train = tcn.predict(X_train)
-    residuals = y_train - y_pred_tcn_train
-
-    y_pred_tcn_val = tcn.predict(X_val)
-    residuals_val = y_val - y_pred_tcn_val
+    residuals, residuals_val = y_train, y_val
+    if tcn is not None:
+        tcn.fit(
+            X_train,
+            _targets_for_model(tcn, y_train),
+            epochs=epochs,
+            batch_size=batch_size,
+            validation_data=(X_val, _targets_for_model(tcn, y_val)),
+            verbose=0,
+        )
+        # Flatten the single-step output before subtraction to avoid broadcasting
+        # (samples, targets) against (samples, 1, targets) across different samples.
+        residuals = y_train - tcn.predict(X_train, verbose=0).reshape(y_train.shape)
+        residuals_val = y_val - tcn.predict(X_val, verbose=0).reshape(y_val.shape)
 
     lstm.fit(
         X_train,
-        residuals,
-        epochs=100,
-        batch_size=32,
-        validation_data=(X_val, residuals_val),
+        _targets_for_model(lstm, residuals),
+        epochs=epochs,
+        batch_size=batch_size,
+        validation_data=(X_val, _targets_for_model(lstm, residuals_val)),
+        verbose=0,
     )
     return tcn, lstm

@@ -3,7 +3,7 @@ import os
 import numpy as np
 import keras
 
-from src.model_building.create_models import ensemble_predict
+from src.model_building.create_models import ensemble_predict, fit_model_retraining
 from src.preprocessing.scaling import inverse_scale_data
 from src.utils.config import reshape
 from src.utils.config import load_model_if_path
@@ -116,32 +116,33 @@ def predict(
 
 
 def predict_retrain(
-    X_train, y_train, X_val, y_val, X_test, tcn, lstm, output_path, tcn_path, lstm_path
+    X_train,
+    y_train,
+    X_val,
+    y_val,
+    X_test,
+    tcn,
+    lstm,
+    output_path=None,
+    tcn_path=None,
+    lstm_path=None,
+    epochs=10,
+    batch_size=32,
 ):
-
-    tcn.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val))
-
-    # --- Compute residuals ---
-    y_pred_tcn_train = tcn.predict(X_train)
-    residuals = y_train - y_pred_tcn_train
-
-    y_pred_tcn_val = tcn.predict(X_val)
-    residuals_val = y_val - y_pred_tcn_val
-
-    lstm.fit(
-        X_train,
-        residuals,
-        epochs=10,
-        batch_size=32,
-        validation_data=(X_val, residuals_val),
+    tcn, lstm = fit_model_retraining(
+        X_train, y_train, X_val, y_val, tcn, lstm, epochs=epochs, batch_size=batch_size
     )
-
-    pred_train = ensemble_predict(tcn, lstm, X_train)
-    pred_val = ensemble_predict(tcn, lstm, X_val)
-    pred_test = ensemble_predict(tcn, lstm, X_test)
-
-    tcn = tcn.save(tcn_path)
-    lstm = lstm.save(lstm_path)
+    predictions = [
+        ensemble_predict(tcn, lstm, values)
+        if tcn is not None
+        else lstm.predict(values, verbose=0)
+        for values in (X_train, X_val, X_test)
+    ]
+    pred_train, pred_val, pred_test = predictions
+    for model, destination in ((tcn, tcn_path), (lstm, lstm_path)):
+        if model is not None and destination is not None:
+            os.makedirs(os.path.dirname(os.path.abspath(destination)), exist_ok=True)
+            model.save(destination)
 
     if output_path:
         output_dir = os.path.dirname(output_path)
